@@ -1,109 +1,184 @@
 const express = require('express');
 const router = express.Router();
-const Patient = require('../models/Patient');
+const { body } = require('express-validator');
+const { validate } = require('../middleware/validate');
 const { protect, authorize } = require('../middleware/auth');
+const { asyncHandler, successResponse, errorResponse, paginate, getPaginationMeta } = require('../utils/helpers');
+const { Patient, Appointment, MedicalRecord, Billing, Doctor, Specialization } = require('../models');
 const { Op } = require('sequelize');
 
-// Get all patients with search
-router.get('/', protect, async (req, res) => {
-  try {
-    const { search } = req.query;
-    let where = {};
-    
-    if (search) {
-      where = {
-        [Op.or]: [
-          { FirstName: { [Op.iLike]: `%${search}%` } },
-          { LastName: { [Op.iLike]: `%${search}%` } },
-          { Email: { [Op.iLike]: `%${search}%` } }
-        ]
-      };
-    }
-    
-    const patients = await Patient.findAll({
-      where,
-      order: [['FirstName', 'ASC']]
-    });
-    
-    res.json(patients);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+// @route   GET /api/patients
+// @desc    Get all patients
+// @access  Private (admin, staff, doctor)
+router.get('/', protect, authorize('admin', 'staff', 'doctor'), asyncHandler(async (req, res) => {
+  const { search, page = 1, limit = 10 } = req.query;
+  const { limit: queryLimit, offset } = paginate(page, limit);
+  
+  let where = {};
+  
+  if (search) {
+    where = {
+      [Op.or]: [
+        { FirstName: { [Op.iLike]: `%${search}%` } },
+        { LastName: { [Op.iLike]: `%${search}%` } },
+        { Email: { [Op.iLike]: `%${search}%` } },
+        { PatientNumber: { [Op.iLike]: `%${search}%` } }
+      ]
+    };
   }
-});
 
-// Get single patient
-router.get('/:id', protect, async (req, res) => {
-  try {
-    const patient = await Patient.findByPk(req.params.id);
-    
-    if (!patient) {
-      return res.status(404).json({ message: 'Patient not found' });
-    }
-    
-    res.json(patient);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+  const { count, rows } = await Patient.findAndCountAll({
+    where,
+    limit: queryLimit,
+    offset,
+    order: [['createdAt', 'DESC']]
+  });
 
-// Create new patient
-router.post('/', protect, authorize('admin'), async (req, res) => {
-  try {
-    const { FirstName, LastName, DateOfBirth, ContactNumber, Email } = req.body;
-    
-    if (!FirstName) {
-      return res.status(400).json({ message: 'First name is required' });
-    }
-    
-    const patient = await Patient.create({
-      FirstName,
-      LastName,
-      DateOfBirth,
-      ContactNumber,
-      Email
-    });
-    
-    res.status(201).json(patient);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+  successResponse(res, {
+    patients: rows,
+    pagination: getPaginationMeta(page, queryLimit, count)
+  });
+}));
 
-// Update patient
-router.put('/:id', protect, async (req, res) => {
-  try {
-    const patient = await Patient.findByPk(req.params.id);
-    
-    if (!patient) {
-      return res.status(404).json({ message: 'Patient not found' });
-    }
-    
-    // Check authorization - patients can only update their own data
-    if (req.user.Role === 'patient' && req.user.RefID !== patient.PatientID) {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-    
-    await patient.update(req.body);
-    res.json(patient);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+// @route   GET /api/patients/:id
+// @desc    Get single patient
+// @access  Private
+router.get('/:id', protect, asyncHandler(async (req, res) => {
+  const patient = await Patient.findByPk(req.params.id);
+  
+  if (!patient) {
+    return errorResponse(res, 'Patient not found', 404);
   }
-});
 
-// Delete patient
-router.delete('/:id', protect, authorize('admin'), async (req, res) => {
-  try {
-    const patient = await Patient.findByPk(req.params.id);
-    
-    if (!patient) {
-      return res.status(404).json({ message: 'Patient not found' });
-    }
-    
-    await patient.destroy();
-    res.json({ message: 'Patient deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  // Patients can only view their own data
+  if (req.user.Role === 'patient' && req.user.RefID !== patient.PatientID) {
+    return errorResponse(res, 'Not authorized', 403);
   }
-});
+
+  successResponse(res, patient);
+}));
+
+// @route   POST /api/patients
+// @desc    Create new patient
+// @access  Private (admin, staff)
+router.post('/', protect, authorize('admin', 'staff'), [
+  body('firstName').notEmpty().withMessage('First name is required'),
+  body('email').optional().isEmail().withMessage('Invalid email'),
+  body('contactNumber').optional().matches(/^[6-9]\d{9}$/).withMessage('Invalid phone number'),
+  validate
+], asyncHandler(async (req, res) => {
+  const patient = await Patient.create(req.body);
+  successResponse(res, patient, 'Patient created successfully', 201);
+}));
+
+// @route   PUT /api/patients/:id
+// @desc    Update patient
+// @access  Private
+router.put('/:id', protect, asyncHandler(async (req, res) => {
+  const patient = await Patient.findByPk(req.params.id);
+  
+  if (!patient) {
+    return errorResponse(res, 'Patient not found', 404);
+  }
+
+  // Patients can only update their own data
+  if (req.user.Role === 'patient' && req.user.RefID !== patient.PatientID) {
+    return errorResponse(res, 'Not authorized', 403);
+  }
+
+  await patient.update(req.body);
+  successResponse(res, patient, 'Patient updated successfully');
+}));
+
+// @route   DELETE /api/patients/:id
+// @desc    Delete patient
+// @access  Private (admin only)
+router.delete('/:id', protect, authorize('admin'), asyncHandler(async (req, res) => {
+  const patient = await Patient.findByPk(req.params.id);
+  
+  if (!patient) {
+    return errorResponse(res, 'Patient not found', 404);
+  }
+
+  await patient.destroy();
+  successResponse(res, null, 'Patient deleted successfully');
+}));
+
+// @route   GET /api/patients/:id/appointments
+// @desc    Get patient's appointments
+// @access  Private
+router.get('/:id/appointments', protect, asyncHandler(async (req, res) => {
+  const patient = await Patient.findByPk(req.params.id);
+  
+  if (!patient) {
+    return errorResponse(res, 'Patient not found', 404);
+  }
+
+  // Check authorization
+  if (req.user.Role === 'patient' && req.user.RefID !== patient.PatientID) {
+    return errorResponse(res, 'Not authorized', 403);
+  }
+
+  const appointments = await Appointment.findAll({
+    where: { PatientID: req.params.id },
+    include: [
+      {
+        model: Doctor,
+        include: [{ model: Specialization }]
+      }
+    ],
+    order: [['AppointmentDate', 'DESC'], ['AppointmentTime', 'DESC']]
+  });
+
+  successResponse(res, appointments);
+}));
+
+// @route   GET /api/patients/:id/medical-records
+// @desc    Get patient's medical records
+// @access  Private
+router.get('/:id/medical-records', protect, asyncHandler(async (req, res) => {
+  const patient = await Patient.findByPk(req.params.id);
+  
+  if (!patient) {
+    return errorResponse(res, 'Patient not found', 404);
+  }
+
+  // Check authorization
+  if (req.user.Role === 'patient' && req.user.RefID !== patient.PatientID) {
+    return errorResponse(res, 'Not authorized', 403);
+  }
+
+  const records = await MedicalRecord.findAll({
+    where: { PatientID: req.params.id },
+    include: [{ model: Doctor }],
+    order: [['VisitDate', 'DESC']]
+  });
+
+  successResponse(res, records);
+}));
+
+// @route   GET /api/patients/:id/billing
+// @desc    Get patient's billing history
+// @access  Private
+router.get('/:id/billing', protect, asyncHandler(async (req, res) => {
+  const patient = await Patient.findByPk(req.params.id);
+  
+  if (!patient) {
+    return errorResponse(res, 'Patient not found', 404);
+  }
+
+  // Check authorization
+  if (req.user.Role === 'patient' && req.user.RefID !== patient.PatientID) {
+    return errorResponse(res, 'Not authorized', 403);
+  }
+
+  const bills = await Billing.findAll({
+    where: { PatientID: req.params.id },
+    include: ['Payments'],
+    order: [['BillingDate', 'DESC']]
+  });
+
+  successResponse(res, bills);
+}));
 
 module.exports = router;

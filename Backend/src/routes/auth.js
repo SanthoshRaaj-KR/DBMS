@@ -1,85 +1,186 @@
+
 const express = require('express');
 const router = express.Router();
-const { body, validationResult } = require('express-validator');
-const User = require('../models/user');
-const Patient = require('../models/Patient');
-const Doctor = require('../models/Doctor');
+const { body } = require('express-validator');
+const { validate } = require('../middleware/validate');
+const { protect } = require('../middleware/auth');
+const { asyncHandler, successResponse, errorResponse } = require('../utils/helpers');
+const { User, Patient, Doctor, Staff } = require('../models');
 
+// @route   POST /api/auth/register
+// @desc    Register new user
+// @access  Public
 router.post('/register', [
-  body('email').isEmail(),
-  body('password').isLength({ min: 6 }),
-  body('firstName').notEmpty(),
-  body('role').isIn(['patient', 'doctor'])
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+  body('email').isEmail().withMessage('Please provide a valid email'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('firstName').notEmpty().withMessage('First name is required'),
+  body('role').isIn(['patient', 'doctor', 'staff']).withMessage('Invalid role'),
+  validate
+], asyncHandler(async (req, res) => {
+  const { email, password, firstName, lastName, role, contactNumber, dateOfBirth, specializationID, departmentID, position } = req.body;
+  
+  // Check if user exists
+  const existingUser = await User.findOne({ where: { Email: email } });
+  if (existingUser) {
+    return errorResponse(res, 'User already exists', 400);
   }
 
-  try {
-    const { email, password, firstName, lastName, role, contactNumber, dateOfBirth, specializationID } = req.body;
-    
-    const existingUser = await User.findOne({ where: { Email: email } });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
-
-    let refID;
-    if (role === 'patient') {
-      const patient = await Patient.create({ 
-        FirstName: firstName, 
-        LastName: lastName, 
-        Email: email,
-        ContactNumber: contactNumber,
-        DateOfBirth: dateOfBirth 
-      });
-      refID = patient.PatientID;
-    } else if (role === 'doctor') {
-      const doctor = await Doctor.create({ 
-        FirstName: firstName, 
-        LastName: lastName,
-        ContactNumber: contactNumber,
-        SpecializationID: specializationID
-      });
-      refID = doctor.DoctorID;
-    }
-
-    const user = await User.create({ 
-      Email: email, 
-      Password: password, 
-      Role: role,
-      RefID: refID 
+  let refID;
+  
+  // Create role-specific record
+  if (role === 'patient') {
+    const patient = await Patient.create({
+      FirstName: firstName,
+      LastName: lastName,
+      Email: email,
+      ContactNumber: contactNumber,
+      DateOfBirth: dateOfBirth
     });
-
-    const token = user.getSignedJwtToken();
-    res.status(201).json({ success: true, token, role: user.Role });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' });
+    refID = patient.PatientID;
+  } else if (role === 'doctor') {
+    if (!specializationID) {
+      return errorResponse(res, 'Specialization is required for doctors', 400);
     }
-
-    const user = await User.findOne({ where: { Email: email } });
-    if (!user || !(await user.matchPassword(password))) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    const token = user.getSignedJwtToken();
-    res.json({ success: true, token, role: user.Role, refID: user.RefID });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    const doctor = await Doctor.create({
+      FirstName: firstName,
+      LastName: lastName,
+      ContactNumber: contactNumber,
+      Email: email,
+      SpecializationID: specializationID,
+      DepartmentID: departmentID
+    });
+    refID = doctor.DoctorID;
+  } else if (role === 'staff') {
+    const staff = await Staff.create({
+      FirstName: firstName,
+      LastName: lastName,
+      ContactNumber: contactNumber,
+      Email: email,
+      DepartmentID: departmentID,
+      Position: position
+    });
+    refID = staff.StaffID;
   }
-});
 
-router.get('/me', require('../middleware/auth').protect, async (req, res) => {
-  res.json({ user: req.user });
-});
+  // Create user account
+  const user = await User.create({
+    Email: email,
+    Password: password,
+    Role: role,
+    RefID: refID
+  });
+
+  const token = user.getSignedJwtToken();
+
+  successResponse(res, {
+    token,
+    user: {
+      id: user.UserID,
+      email: user.Email,
+      role: user.Role,
+      refId: user.RefID
+    }
+  }, 'Registration successful', 201);
+}));
+
+// @route   POST /api/auth/login
+// @desc    Login user
+// @access  Public
+router.post('/login', [
+  body('email').isEmail().withMessage('Please provide a valid email'),
+  body('password').notEmpty().withMessage('Password is required'),
+  validate
+], asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  // Check for user
+  const user = await User.findOne({ where: { Email: email } });
+  if (!user) {
+    return errorResponse(res, 'Invalid credentials', 401);
+  }
+
+  // Check password
+  const isMatch = await user.matchPassword(password);
+  if (!isMatch) {
+    return errorResponse(res, 'Invalid credentials', 401);
+  }
+
+  // Check if account is active
+  if (!user.IsActive) {
+    return errorResponse(res, 'Account is inactive', 401);
+  }
+
+  // Update last login
+  await user.update({ LastLogin: new Date() });
+
+  const token = user.getSignedJwtToken();
+
+  successResponse(res, {
+    token,
+    user: {
+      id: user.UserID,
+      email: user.Email,
+      role: user.Role,
+      refId: user.RefID
+    }
+  }, 'Login successful');
+}));
+
+// @route   GET /api/auth/me
+// @desc    Get current logged in user
+// @access  Private
+router.get('/me', protect, asyncHandler(async (req, res) => {
+  let userData = {
+    id: req.user.UserID,
+    email: req.user.Email,
+    role: req.user.Role,
+    refId: req.user.RefID,
+    isActive: req.user.IsActive,
+    lastLogin: req.user.LastLogin
+  };
+
+  // Get additional details based on role
+  if (req.user.Role === 'patient') {
+    const patient = await Patient.findByPk(req.user.RefID);
+    userData.profile = patient;
+  } else if (req.user.Role === 'doctor') {
+    const doctor = await Doctor.findByPk(req.user.RefID, {
+      include: ['Specialization', 'Department']
+    });
+    userData.profile = doctor;
+  } else if (req.user.Role === 'staff') {
+    const staff = await Staff.findByPk(req.user.RefID, {
+      include: ['Department']
+    });
+    userData.profile = staff;
+  }
+
+  successResponse(res, userData);
+}));
+
+// @route   PUT /api/auth/update-password
+// @desc    Update password
+// @access  Private
+router.put('/update-password', protect, [
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
+  validate
+], asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const user = await User.findByPk(req.user.UserID);
+  
+  // Check current password
+  const isMatch = await user.matchPassword(currentPassword);
+  if (!isMatch) {
+    return errorResponse(res, 'Current password is incorrect', 401);
+  }
+
+  // Update password
+  user.Password = newPassword;
+  await user.save();
+
+  successResponse(res, null, 'Password updated successfully');
+}));
 
 module.exports = router;
