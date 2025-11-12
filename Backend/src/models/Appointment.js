@@ -15,10 +15,6 @@ const Appointment = sequelize.define('Appointment', {
     type: DataTypes.INTEGER,
     allowNull: false
   },
-  ClinicID: {
-    type: DataTypes.INTEGER,
-    allowNull: true
-  },
   AppointmentDate: {
     type: DataTypes.DATEONLY,
     allowNull: false

@@ -1,21 +1,14 @@
-
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate');
-const { protect, authorize } = require('../middleware/auth');
 const { asyncHandler, successResponse, errorResponse } = require('../utils/helpers');
 const { MedicalRecord, Patient, Doctor, Appointment } = require('../models');
 
 // @route   GET /api/medical-records/patient/:patientId
 // @desc    Get patient's medical records
-// @access  Private
-router.get('/patient/:patientId', protect, asyncHandler(async (req, res) => {
-  // Check authorization
-  if (req.user.Role === 'patient' && req.user.RefID != req.params.patientId) {
-    return errorResponse(res, 'Not authorized', 403);
-  }
-
+// @access  Public
+router.get('/patient/:patientId', asyncHandler(async (req, res) => {
   const records = await MedicalRecord.findAll({
     where: { PatientID: req.params.patientId },
     include: [
@@ -36,8 +29,8 @@ router.get('/patient/:patientId', protect, asyncHandler(async (req, res) => {
 
 // @route   GET /api/medical-records/:id
 // @desc    Get single medical record
-// @access  Private
-router.get('/:id', protect, asyncHandler(async (req, res) => {
+// @access  Public
+router.get('/:id', asyncHandler(async (req, res) => {
   const record = await MedicalRecord.findByPk(req.params.id, {
     include: [
       { model: Patient },
@@ -50,31 +43,20 @@ router.get('/:id', protect, asyncHandler(async (req, res) => {
     return errorResponse(res, 'Medical record not found', 404);
   }
 
-  // Check authorization
-  if (req.user.Role === 'patient' && req.user.RefID !== record.PatientID) {
-    return errorResponse(res, 'Not authorized', 403);
-  }
-
   successResponse(res, record);
 }));
 
 // @route   POST /api/medical-records
 // @desc    Create medical record
-// @access  Private (doctor, admin)
-router.post('/', protect, authorize('doctor', 'admin'), [
+// @access  Public
+router.post('/', [
   body('patientId').notEmpty().withMessage('Patient ID is required'),
+  body('doctorId').notEmpty().withMessage('Doctor ID is required'),
   body('symptoms').optional().notEmpty().withMessage('Symptoms cannot be empty'),
   body('diagnosis').optional().notEmpty().withMessage('Diagnosis cannot be empty'),
   validate
 ], asyncHandler(async (req, res) => {
-  const { patientId, appointmentId, symptoms, diagnosis, treatmentPlan, notes, vitalSigns } = req.body;
-  
-  // Determine doctor ID
-  const doctorId = req.user.Role === 'doctor' ? req.user.RefID : req.body.doctorId;
-  
-  if (!doctorId) {
-    return errorResponse(res, 'Doctor ID is required', 400);
-  }
+  const { patientId, doctorId, appointmentId, symptoms, diagnosis, treatmentPlan, notes, vitalSigns } = req.body;
 
   const record = await MedicalRecord.create({
     PatientID: patientId,
@@ -99,17 +81,12 @@ router.post('/', protect, authorize('doctor', 'admin'), [
 
 // @route   PUT /api/medical-records/:id
 // @desc    Update medical record
-// @access  Private (doctor, admin)
-router.put('/:id', protect, authorize('doctor', 'admin'), asyncHandler(async (req, res) => {
+// @access  Public
+router.put('/:id', asyncHandler(async (req, res) => {
   const record = await MedicalRecord.findByPk(req.params.id);
   
   if (!record) {
     return errorResponse(res, 'Medical record not found', 404);
-  }
-
-  // Doctors can only update their own records
-  if (req.user.Role === 'doctor' && req.user.RefID !== record.DoctorID) {
-    return errorResponse(res, 'Not authorized', 403);
   }
 
   await record.update(req.body);
@@ -126,8 +103,8 @@ router.put('/:id', protect, authorize('doctor', 'admin'), asyncHandler(async (re
 
 // @route   DELETE /api/medical-records/:id
 // @desc    Delete medical record
-// @access  Private (admin only)
-router.delete('/:id', protect, authorize('admin'), asyncHandler(async (req, res) => {
+// @access  Public
+router.delete('/:id', asyncHandler(async (req, res) => {
   const record = await MedicalRecord.findByPk(req.params.id);
   
   if (!record) {

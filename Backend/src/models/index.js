@@ -1,11 +1,9 @@
 const sequelize = require('../config/database');
-const User = require('./User');
 const Patient = require('./Patient');
 const Doctor = require('./Doctor');
 const Staff = require('./Staff');
-const Specialization = require('./specialization');
+const Specialization = require('./Specialization');
 const Department = require('./Department');
-const Clinic = require('./Clinic');
 const Appointment = require('./Appointment');
 const MedicalRecord = require('./MedicalRecord');
 const Prescription = require('./Prescription');
@@ -27,10 +25,8 @@ Department.hasMany(Staff, { foreignKey: 'DepartmentID' });
 // Appointment associations
 Appointment.belongsTo(Patient, { foreignKey: 'PatientID' });
 Appointment.belongsTo(Doctor, { foreignKey: 'DoctorID' });
-Appointment.belongsTo(Clinic, { foreignKey: 'ClinicID' });
 Patient.hasMany(Appointment, { foreignKey: 'PatientID' });
 Doctor.hasMany(Appointment, { foreignKey: 'DoctorID' });
-Clinic.hasMany(Appointment, { foreignKey: 'ClinicID' });
 
 // MedicalRecord associations
 MedicalRecord.belongsTo(Patient, { foreignKey: 'PatientID' });
@@ -60,13 +56,11 @@ Billing.hasMany(Payment, { foreignKey: 'BillingID', as: 'Payments' });
 
 module.exports = {
   sequelize,
-  User,
   Patient,
   Doctor,
   Staff,
   Specialization,
   Department,
-  Clinic,
   Appointment,
   MedicalRecord,
   Prescription,

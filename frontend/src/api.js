@@ -8,13 +8,16 @@ const API = axios.create({
   },
 });
 
-// Request interceptor to add token
+// Request interceptor - add admin password for admin requests
 API.interceptors.request.use(
   (config) => {
-    const token = useAuthStore.getState().token;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const { role, adminPassword } = useAuthStore.getState();
+    
+    // Add admin password header for admin role
+    if (role === 'admin' && adminPassword) {
+      config.headers['admin-password'] = adminPassword;
     }
+    
     return config;
   },
   (error) => {
@@ -24,12 +27,15 @@ API.interceptors.request.use(
 
 // Response interceptor to handle errors
 API.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    if (error.response?.status === 401) {
-      useAuthStore.getState().logout();
-      window.location.href = '/login';
+  (response) => {
+    // If backend returns { success, message, data }, extract the data property
+    if (response.data && typeof response.data === 'object' && 'data' in response.data && 'success' in response.data) {
+      return response.data.data;
     }
+    return response.data;
+  },
+  (error) => {
+    // No automatic logout on 401 since there's no authentication
     return Promise.reject(error);
   }
 );

@@ -1,10 +1,9 @@
 // ============================================
-// src/seeders/seed.js
+// src/seeders/seed.js - Simplified (No Auth, No Clinics)
 // ============================================
 require('dotenv').config();
 const { 
   sequelize, 
-  User, 
   Patient, 
   Doctor, 
   Staff, 
@@ -33,11 +32,7 @@ async function seed() {
       { SpecializationName: 'Pediatrics', Description: 'Medical care of infants and children' },
       { SpecializationName: 'Orthopedics', Description: 'Bones, joints, and muscles' },
       { SpecializationName: 'Neurology', Description: 'Nervous system and brain' },
-      { SpecializationName: 'General Medicine', Description: 'General medical care' },
-      { SpecializationName: 'Gynecology', Description: 'Female reproductive system' },
-      { SpecializationName: 'Ophthalmology', Description: 'Eyes and vision' },
-      { SpecializationName: 'Psychiatry', Description: 'Mental health' },
-      { SpecializationName: 'ENT', Description: 'Ear, Nose, and Throat' }
+      { SpecializationName: 'General Medicine', Description: 'General medical care' }
     ]);
     console.log(`✅ Created ${specializations.length} specializations\n`);
 
@@ -47,35 +42,11 @@ async function seed() {
       { DepartmentName: 'Emergency', Description: 'Emergency medical services' },
       { DepartmentName: 'Outpatient', Description: 'Outpatient consultation' },
       { DepartmentName: 'Inpatient', Description: 'Inpatient care' },
-      { DepartmentName: 'Radiology', Description: 'Medical imaging' },
       { DepartmentName: 'Laboratory', Description: 'Medical tests and diagnostics' },
       { DepartmentName: 'Pharmacy', Description: 'Medication dispensing' },
       { DepartmentName: 'Administration', Description: 'Hospital administration' }
     ]);
     console.log(`✅ Created ${departments.length} departments\n`);
-
-    console.log('🏥 Creating clinics...');
-    const clinics = await Clinic.bulkCreate([
-      {
-        ClinicName: 'Main Hospital Clinic',
-        Address: '123 Hospital Road, Bangalore, Karnataka',
-        ContactNumber: '9876543200',
-        Email: 'main@hospital.com'
-      },
-      {
-        ClinicName: 'Cardiology Wing',
-        Address: '123 Hospital Road, Building A, Bangalore, Karnataka',
-        ContactNumber: '9876543201',
-        Email: 'cardio@hospital.com'
-      },
-      {
-        ClinicName: 'Pediatrics Center',
-        Address: "456 Children's Lane, Bangalore, Karnataka",
-        ContactNumber: '9876543202',
-        Email: 'pediatrics@hospital.com'
-      }
-    ]);
-    console.log(`✅ Created ${clinics.length} clinics\n`);
 
     // 3. Create Doctors
     console.log('👨‍⚕️ Creating doctors...');
@@ -163,7 +134,7 @@ async function seed() {
         LastName: 'Nair',
         ContactNumber: '9123456780',
         Email: 'ramesh.nair@hospital.com',
-        DepartmentID: departments[6].DepartmentID,
+        DepartmentID: departments[5].DepartmentID,
         Position: 'Receptionist',
         JoiningDate: '2020-01-15'
       },
@@ -172,7 +143,7 @@ async function seed() {
         LastName: 'Iyer',
         ContactNumber: '9123456781',
         Email: 'lakshmi.iyer@hospital.com',
-        DepartmentID: departments[6].DepartmentID,
+        DepartmentID: departments[5].DepartmentID,
         Position: 'Accountant',
         JoiningDate: '2019-06-10'
       },
@@ -181,7 +152,7 @@ async function seed() {
         LastName: 'Menon',
         ContactNumber: '9123456782',
         Email: 'suresh.menon@hospital.com',
-        DepartmentID: departments[5].DepartmentID,
+        DepartmentID: departments[4].DepartmentID,
         Position: 'Pharmacist',
         JoiningDate: '2018-03-20'
       }
@@ -262,363 +233,158 @@ async function seed() {
         Address: '987, Jayanagar, Bangalore, Karnataka',
         EmergencyContact: 'Vikram Desai',
         EmergencyContactNumber: '9234567801'
+      },
+      {
+        FirstName: 'Sanjay',
+        LastName: 'Kumar',
+        DateOfBirth: '1987-02-14',
+        Gender: 'Male',
+        BloodGroup: 'B-',
+        ContactNumber: '9234567802',
+        Email: 'sanjay.k@example.com',
+        Address: '111, Electronic City, Bangalore, Karnataka',
+        EmergencyContact: 'Rekha Kumar',
+        EmergencyContactNumber: '9234567803'
+      },
+      {
+        FirstName: 'Neha',
+        LastName: 'Singh',
+        DateOfBirth: '1991-09-25',
+        Gender: 'Female',
+        BloodGroup: 'O+',
+        ContactNumber: '9234567804',
+        Email: 'neha.s@example.com',
+        Address: '222, HSR Layout, Bangalore, Karnataka',
+        EmergencyContact: 'Amit Singh',
+        EmergencyContactNumber: '9234567805'
+      },
+      {
+        FirstName: 'Ravi',
+        LastName: 'Sharma',
+        DateOfBirth: '1989-06-30',
+        Gender: 'Male',
+        BloodGroup: 'A+',
+        ContactNumber: '9234567806',
+        Email: 'ravi.s@example.com',
+        Address: '333, BTM Layout, Bangalore, Karnataka',
+        EmergencyContact: 'Sunita Sharma',
+        EmergencyContactNumber: '9234567807'
+      },
+      {
+        FirstName: 'Priya',
+        LastName: 'Reddy',
+        DateOfBirth: '1994-04-12',
+        Gender: 'Female',
+        BloodGroup: 'AB-',
+        ContactNumber: '9234567808',
+        Email: 'priya.r@example.com',
+        Address: '444, Marathahalli, Bangalore, Karnataka',
+        EmergencyContact: 'Venkat Reddy',
+        EmergencyContactNumber: '9234567809'
+      },
+      {
+        FirstName: 'Vijay',
+        LastName: 'Patel',
+        DateOfBirth: '1986-11-08',
+        Gender: 'Male',
+        BloodGroup: 'O-',
+        ContactNumber: '9234567810',
+        Email: 'vijay.p@example.com',
+        Address: '555, Yelahanka, Bangalore, Karnataka',
+        EmergencyContact: 'Kavita Patel',
+        EmergencyContactNumber: '9234567811'
+      },
+      {
+        FirstName: 'Ananya',
+        LastName: 'Iyer',
+        DateOfBirth: '1996-01-20',
+        Gender: 'Female',
+        BloodGroup: 'B+',
+        ContactNumber: '9234567812',
+        Email: 'ananya.i@example.com',
+        Address: '666, Malleshwaram, Bangalore, Karnataka',
+        EmergencyContact: 'Ramesh Iyer',
+        EmergencyContactNumber: '9234567813'
       }
     ]);
     console.log(`✅ Created ${patients.length} patients\n`);
 
-    // 6. Create Users
-    console.log('🔐 Creating user accounts...');
-    
-    // Admin user
-    await User.create({
-      Email: 'admin@hospital.com',
-      Password: 'admin123',
-      Role: 'admin',
-      IsActive: true
-    });
-    console.log('   ✓ Admin user created');
-
-    // Doctor users
-    for (let i = 0; i < doctors.length; i++) {
-      await User.create({
-        Email: doctors[i].Email,
-        Password: 'doctor123',
-        Role: 'doctor',
-        RefID: doctors[i].DoctorID,
-        IsActive: true
-      });
-    }
-    console.log(`   ✓ Created ${doctors.length} doctor accounts`);
-
-    // Staff users
-    for (let i = 0; i < staff.length; i++) {
-      await User.create({
-        Email: staff[i].Email,
-        Password: 'staff123',
-        Role: 'staff',
-        RefID: staff[i].StaffID,
-        IsActive: true
-      });
-    }
-    console.log(`   ✓ Created ${staff.length} staff accounts`);
-
-    // Patient users
-    for (let i = 0; i < patients.length; i++) {
-      await User.create({
-        Email: patients[i].Email,
-        Password: 'patient123',
-        Role: 'patient',
-        RefID: patients[i].PatientID,
-        IsActive: true
-      });
-    }
-    console.log(`   ✓ Created ${patients.length} patient accounts\n`);
-
-    // 7. Create Appointments
+    // 6. Create Appointments (Simplified - No Clinics)
     console.log('📅 Creating appointments...');
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const lastWeek = new Date(today);
-    lastWeek.setDate(lastWeek.getDate() - 7);
+    const nov12 = '2025-11-12';
+    const nov13 = '2025-11-13';
+    const nov14 = '2025-11-14';
+    const nov15 = '2025-11-15';
+    const nov10 = '2025-11-10';
+    const nov11 = '2025-11-11';
+    const nov05 = '2025-11-05';
+    const oct28 = '2025-10-28';
+    const oct20 = '2025-10-20';
+    const oct10 = '2025-10-10';
+    const sep25 = '2025-09-25';
+    const sep10 = '2025-09-10';
 
     const appointments = await Appointment.bulkCreate([
-      {
-        PatientID: patients[0].PatientID,
-        DoctorID: doctors[0].DoctorID,
-        AppointmentDate: tomorrow.toISOString().split('T')[0],
-        AppointmentTime: '10:00:00',
-        Status: 'Scheduled',
-        Reason: 'Chest pain and discomfort',
-        Notes: 'Patient reports irregular heartbeat'
-      },
-      {
-        PatientID: patients[1].PatientID,
-        DoctorID: doctors[1].DoctorID,
-        AppointmentDate: tomorrow.toISOString().split('T')[0],
-        AppointmentTime: '14:30:00',
-        Status: 'Confirmed',
-        Reason: 'Skin rash on arms',
-        Notes: 'Rash appeared 3 days ago'
-      },
-      {
-        PatientID: patients[2].PatientID,
-        DoctorID: doctors[2].DoctorID,
-        AppointmentDate: nextWeek.toISOString().split('T')[0],
-        AppointmentTime: '11:00:00',
-        Status: 'Scheduled',
-        Reason: 'Child vaccination',
-        Notes: 'Regular checkup for 2-year-old'
-      },
-      {
-        PatientID: patients[0].PatientID,
-        DoctorID: doctors[5].DoctorID,
-        AppointmentDate: lastWeek.toISOString().split('T')[0],
-        AppointmentTime: '09:00:00',
-        Status: 'Completed',
-        Reason: 'General checkup',
-        Notes: 'Annual health screening'
-      },
-      {
-        PatientID: patients[3].PatientID,
-        DoctorID: doctors[3].DoctorID,
-        AppointmentDate: yesterday.toISOString().split('T')[0],
-        AppointmentTime: '15:00:00',
-        Status: 'Completed',
-        Reason: 'Knee pain',
-        Notes: 'Pain after jogging injury'
-      },
-      {
-        PatientID: patients[4].PatientID,
-        DoctorID: doctors[4].DoctorID,
-        AppointmentDate: today.toISOString().split('T')[0],
-        AppointmentTime: '10:30:00',
-        Status: 'Confirmed',
-        Reason: 'Frequent headaches',
-        Notes: 'Headaches for past 2 weeks'
-      },
-      {
-        PatientID: patients[5].PatientID,
-        DoctorID: doctors[0].DoctorID,
-        AppointmentDate: today.toISOString().split('T')[0],
-        AppointmentTime: '16:00:00',
-        Status: 'Scheduled',
-        Reason: 'Follow-up consultation',
-        Notes: 'Post-surgery checkup'
-      }
+      // Dr. Rajesh Kumar (Cardiologist) - 8 appointments
+      { PatientID: patients[0].PatientID, DoctorID: doctors[0].DoctorID, AppointmentDate: sep10, AppointmentTime: '09:00:00', Status: 'Completed', Reason: 'Initial cardiac consultation', Notes: 'First visit - chest pain complaints' },
+      { PatientID: patients[0].PatientID, DoctorID: doctors[0].DoctorID, AppointmentDate: oct10, AppointmentTime: '10:00:00', Status: 'Completed', Reason: 'Follow-up ECG results', Notes: 'Monitoring progress' },
+      { PatientID: patients[6].PatientID, DoctorID: doctors[0].DoctorID, AppointmentDate: oct20, AppointmentTime: '11:30:00', Status: 'Completed', Reason: 'Heart palpitations', Notes: 'Regular heart checkup' },
+      { PatientID: patients[5].PatientID, DoctorID: doctors[0].DoctorID, AppointmentDate: nov05, AppointmentTime: '14:00:00', Status: 'Completed', Reason: 'Hypertension check', Notes: 'Blood pressure monitoring' },
+      { PatientID: patients[0].PatientID, DoctorID: doctors[0].DoctorID, AppointmentDate: nov12, AppointmentTime: '09:00:00', Status: 'Scheduled', Reason: 'Monthly cardiac checkup', Notes: 'Regular monitoring - 3rd visit' },
+      { PatientID: patients[11].PatientID, DoctorID: doctors[0].DoctorID, AppointmentDate: nov12, AppointmentTime: '11:00:00', Status: 'Scheduled', Reason: 'Chest discomfort', Notes: 'New patient consultation' },
+      { PatientID: patients[6].PatientID, DoctorID: doctors[0].DoctorID, AppointmentDate: nov13, AppointmentTime: '10:00:00', Status: 'Scheduled', Reason: 'Follow-up palpitations', Notes: 'Second visit - review medication' },
+      { PatientID: patients[3].PatientID, DoctorID: doctors[0].DoctorID, AppointmentDate: nov13, AppointmentTime: '14:30:00', Status: 'Scheduled', Reason: 'Cardiac screening', Notes: 'Family history of heart disease' },
+
+      // Dr. Priya Sharma (Dermatologist) - 8 appointments
+      { PatientID: patients[1].PatientID, DoctorID: doctors[1].DoctorID, AppointmentDate: sep25, AppointmentTime: '10:00:00', Status: 'Completed', Reason: 'Initial skin consultation', Notes: 'First visit for skin rash' },
+      { PatientID: patients[1].PatientID, DoctorID: doctors[1].DoctorID, AppointmentDate: oct28, AppointmentTime: '11:00:00', Status: 'Completed', Reason: 'Skin allergy test follow-up', Notes: 'Second visit - reviewing test results' },
+      { PatientID: patients[9].PatientID, DoctorID: doctors[1].DoctorID, AppointmentDate: oct10, AppointmentTime: '09:00:00', Status: 'Completed', Reason: 'Acne consultation', Notes: 'Initial visit for acne treatment' },
+      { PatientID: patients[9].PatientID, DoctorID: doctors[1].DoctorID, AppointmentDate: nov05, AppointmentTime: '15:00:00', Status: 'Completed', Reason: 'Acne treatment follow-up', Notes: 'Second visit - progress check' },
+      { PatientID: patients[1].PatientID, DoctorID: doctors[1].DoctorID, AppointmentDate: nov12, AppointmentTime: '09:30:00', Status: 'Scheduled', Reason: 'Skin rash recurrence', Notes: 'Third visit - rash returned' },
+      { PatientID: patients[8].PatientID, DoctorID: doctors[1].DoctorID, AppointmentDate: nov12, AppointmentTime: '13:00:00', Status: 'Scheduled', Reason: 'Eczema consultation', Notes: 'New patient' },
+      { PatientID: patients[9].PatientID, DoctorID: doctors[1].DoctorID, AppointmentDate: nov13, AppointmentTime: '10:00:00', Status: 'Scheduled', Reason: 'Acne progress review', Notes: 'Third visit - treatment effectiveness' },
+      { PatientID: patients[4].PatientID, DoctorID: doctors[1].DoctorID, AppointmentDate: nov13, AppointmentTime: '16:00:00', Status: 'Scheduled', Reason: 'Skin mole examination', Notes: 'Routine skin check' },
+
+      // Dr. Amit Patel (Pediatrician) - 7 appointments
+      { PatientID: patients[7].PatientID, DoctorID: doctors[2].DoctorID, AppointmentDate: sep10, AppointmentTime: '11:00:00', Status: 'Completed', Reason: 'First prenatal visit', Notes: 'Initial pregnancy consultation' },
+      { PatientID: patients[7].PatientID, DoctorID: doctors[2].DoctorID, AppointmentDate: oct10, AppointmentTime: '09:30:00', Status: 'Completed', Reason: 'Second prenatal checkup', Notes: 'Regular monitoring' },
+      { PatientID: patients[2].PatientID, DoctorID: doctors[2].DoctorID, AppointmentDate: oct20, AppointmentTime: '14:00:00', Status: 'Completed', Reason: 'Child vaccination', Notes: 'Routine immunization' },
+      { PatientID: patients[11].PatientID, DoctorID: doctors[2].DoctorID, AppointmentDate: nov10, AppointmentTime: '15:30:00', Status: 'Completed', Reason: 'Flu symptoms', Notes: 'Fever and cold for 3 days' },
+      { PatientID: patients[7].PatientID, DoctorID: doctors[2].DoctorID, AppointmentDate: nov12, AppointmentTime: '10:00:00', Status: 'Scheduled', Reason: 'Third trimester checkup', Notes: 'Regular prenatal monitoring' },
+      { PatientID: patients[2].PatientID, DoctorID: doctors[2].DoctorID, AppointmentDate: nov13, AppointmentTime: '11:00:00', Status: 'Scheduled', Reason: 'Follow-up vaccination', Notes: 'Second vaccination appointment' },
+      { PatientID: patients[11].PatientID, DoctorID: doctors[2].DoctorID, AppointmentDate: nov13, AppointmentTime: '14:00:00', Status: 'Scheduled', Reason: 'Flu follow-up', Notes: 'Check recovery progress' },
+
+      // Dr. Sneha Reddy (Orthopedics) - 8 appointments
+      { PatientID: patients[8].PatientID, DoctorID: doctors[3].DoctorID, AppointmentDate: sep25, AppointmentTime: '10:00:00', Status: 'Completed', Reason: 'Initial back pain consultation', Notes: 'First visit - chronic pain' },
+      { PatientID: patients[8].PatientID, DoctorID: doctors[3].DoctorID, AppointmentDate: oct20, AppointmentTime: '14:00:00', Status: 'Completed', Reason: 'Back pain follow-up', Notes: 'MRI results review' },
+      { PatientID: patients[3].PatientID, DoctorID: doctors[3].DoctorID, AppointmentDate: oct28, AppointmentTime: '15:00:00', Status: 'Completed', Reason: 'Knee pain initial visit', Notes: 'Jogging injury' },
+      { PatientID: patients[10].PatientID, DoctorID: doctors[3].DoctorID, AppointmentDate: nov05, AppointmentTime: '11:00:00', Status: 'Completed', Reason: 'Shoulder pain', Notes: 'Sports injury consultation' },
+      { PatientID: patients[8].PatientID, DoctorID: doctors[3].DoctorID, AppointmentDate: nov12, AppointmentTime: '09:00:00', Status: 'Scheduled', Reason: 'Physiotherapy review', Notes: 'Third visit - progress evaluation' },
+      { PatientID: patients[3].PatientID, DoctorID: doctors[3].DoctorID, AppointmentDate: nov12, AppointmentTime: '15:00:00', Status: 'Scheduled', Reason: 'Knee pain follow-up', Notes: 'Second visit - check healing' },
+      { PatientID: patients[10].PatientID, DoctorID: doctors[3].DoctorID, AppointmentDate: nov13, AppointmentTime: '10:30:00', Status: 'Scheduled', Reason: 'Shoulder physiotherapy', Notes: 'Second visit - treatment plan' },
+      { PatientID: patients[5].PatientID, DoctorID: doctors[3].DoctorID, AppointmentDate: nov13, AppointmentTime: '16:00:00', Status: 'Scheduled', Reason: 'Hip pain consultation', Notes: 'New patient' },
+
+      // Dr. Vikram Singh (Neurology) - 8 appointments
+      { PatientID: patients[4].PatientID, DoctorID: doctors[4].DoctorID, AppointmentDate: sep10, AppointmentTime: '09:00:00', Status: 'Completed', Reason: 'Initial migraine consultation', Notes: 'First visit - frequent headaches' },
+      { PatientID: patients[4].PatientID, DoctorID: doctors[4].DoctorID, AppointmentDate: oct10, AppointmentTime: '10:30:00', Status: 'Completed', Reason: 'Migraine medication review', Notes: 'Second visit - treatment adjustment' },
+      { PatientID: patients[10].PatientID, DoctorID: doctors[4].DoctorID, AppointmentDate: oct20, AppointmentTime: '13:00:00', Status: 'Completed', Reason: 'Memory issues consultation', Notes: 'Initial cognitive assessment' },
+      { PatientID: patients[6].PatientID, DoctorID: doctors[4].DoctorID, AppointmentDate: nov05, AppointmentTime: '14:00:00', Status: 'Completed', Reason: 'Dizziness episodes', Notes: 'Neurological examination' },
+      { PatientID: patients[4].PatientID, DoctorID: doctors[4].DoctorID, AppointmentDate: nov12, AppointmentTime: '09:30:00', Status: 'Scheduled', Reason: 'Monthly migraine follow-up', Notes: 'Third visit - progress check' },
+      { PatientID: patients[10].PatientID, DoctorID: doctors[4].DoctorID, AppointmentDate: nov12, AppointmentTime: '13:00:00', Status: 'Scheduled', Reason: 'Memory test results', Notes: 'Second visit - discuss findings' },
+      { PatientID: patients[6].PatientID, DoctorID: doctors[4].DoctorID, AppointmentDate: nov13, AppointmentTime: '11:00:00', Status: 'Scheduled', Reason: 'Dizziness follow-up', Notes: 'Second visit - medication review' },
+      { PatientID: patients[2].PatientID, DoctorID: doctors[4].DoctorID, AppointmentDate: nov13, AppointmentTime: '15:30:00', Status: 'Scheduled', Reason: 'Seizure consultation', Notes: 'New patient - urgent' },
+
+      // Dr. Anjali Verma (General Medicine) - 8 appointments
+      { PatientID: patients[0].PatientID, DoctorID: doctors[5].DoctorID, AppointmentDate: sep25, AppointmentTime: '09:00:00', Status: 'Completed', Reason: 'Annual health screening', Notes: 'Routine checkup' },
+      { PatientID: patients[5].PatientID, DoctorID: doctors[5].DoctorID, AppointmentDate: oct10, AppointmentTime: '10:00:00', Status: 'Completed', Reason: 'Fever and fatigue', Notes: 'Viral infection symptoms' },
+      { PatientID: patients[5].PatientID, DoctorID: doctors[5].DoctorID, AppointmentDate: oct20, AppointmentTime: '14:00:00', Status: 'Completed', Reason: 'Fever follow-up', Notes: 'Second visit - recovery check' },
+      { PatientID: patients[9].PatientID, DoctorID: doctors[5].DoctorID, AppointmentDate: oct28, AppointmentTime: '11:00:00', Status: 'Completed', Reason: 'General health checkup', Notes: 'Wellness visit' },
+      { PatientID: patients[0].PatientID, DoctorID: doctors[5].DoctorID, AppointmentDate: nov12, AppointmentTime: '08:30:00', Status: 'Scheduled', Reason: 'Follow-up health screening', Notes: 'Second visit - blood test results' },
+      { PatientID: patients[11].PatientID, DoctorID: doctors[5].DoctorID, AppointmentDate: nov12, AppointmentTime: '14:30:00', Status: 'Scheduled', Reason: 'Abdominal pain', Notes: 'New patient consultation' },
+      { PatientID: patients[5].PatientID, DoctorID: doctors[5].DoctorID, AppointmentDate: nov13, AppointmentTime: '09:00:00', Status: 'Scheduled', Reason: 'Post-recovery checkup', Notes: 'Third visit - final assessment' },
+      { PatientID: patients[1].PatientID, DoctorID: doctors[5].DoctorID, AppointmentDate: nov13, AppointmentTime: '16:00:00', Status: 'Scheduled', Reason: 'Diabetes screening', Notes: 'Preventive care' }
     ]);
     console.log(`✅ Created ${appointments.length} appointments\n`);
-
-    // 8. Create Medical Records
-    console.log('📋 Creating medical records...');
-    const medicalRecords = await MedicalRecord.bulkCreate([
-      {
-        PatientID: patients[0].PatientID,
-        DoctorID: doctors[5].DoctorID,
-        AppointmentID: appointments[3].AppointmentID,
-        VisitDate: lastWeek.toISOString().split('T')[0],
-        Symptoms: 'Fever, body ache, fatigue',
-        Diagnosis: 'Viral fever with mild dehydration',
-        TreatmentPlan: 'Rest, adequate hydration, and medication',
-        Notes: 'Patient advised to return if symptoms persist beyond 5 days',
-        VitalSigns: {
-          bloodPressure: '120/80',
-          temperature: '99.5°F',
-          pulse: '78 bpm',
-          respiratoryRate: '16/min',
-          oxygenSaturation: '98%'
-        }
-      },
-      {
-        PatientID: patients[3].PatientID,
-        DoctorID: doctors[3].DoctorID,
-        AppointmentID: appointments[4].AppointmentID,
-        VisitDate: yesterday.toISOString().split('T')[0],
-        Symptoms: 'Knee pain, swelling, difficulty walking',
-        Diagnosis: 'Sprained knee ligament (Grade 1)',
-        TreatmentPlan: 'RICE protocol, pain management, physiotherapy',
-        Notes: 'Injury occurred during morning jog. X-ray shows no fracture. Follow-up in 2 weeks.',
-        VitalSigns: {
-          bloodPressure: '118/76',
-          temperature: '98.4°F',
-          pulse: '72 bpm',
-          respiratoryRate: '15/min'
-        }
-      },
-      {
-        PatientID: patients[1].PatientID,
-        DoctorID: doctors[1].DoctorID,
-        VisitDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        Symptoms: 'Itchy skin rash, redness',
-        Diagnosis: 'Contact dermatitis',
-        TreatmentPlan: 'Topical corticosteroid cream, antihistamine',
-        Notes: 'Patch test performed. Allergic to certain detergents. Advised to use hypoallergenic products.',
-        VitalSigns: {
-          bloodPressure: '115/75',
-          temperature: '98.6°F',
-          pulse: '70 bpm'
-        }
-      }
-    ]);
-    console.log(`✅ Created ${medicalRecords.length} medical records\n`);
-
-    // 9. Create Prescriptions
-    console.log('💊 Creating prescriptions...');
-    const prescriptions = await Prescription.bulkCreate([
-      {
-        MedicalRecordID: medicalRecords[0].RecordID,
-        PatientID: patients[0].PatientID,
-        DoctorID: doctors[5].DoctorID,
-        PrescriptionDate: lastWeek.toISOString().split('T')[0],
-        ValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        Status: 'Active',
-        Medications: [
-          {
-            name: 'Paracetamol',
-            dosage: '500mg',
-            frequency: 'Three times daily',
-            duration: '5 days',
-            instructions: 'Take after meals'
-          },
-          {
-            name: 'Electrolyte Solution',
-            dosage: '200ml',
-            frequency: 'Twice daily',
-            duration: '3 days',
-            instructions: 'Mix with water'
-          }
-        ],
-        Instructions: 'Complete the full course. Drink plenty of fluids. Rest adequately.'
-      },
-      {
-        MedicalRecordID: medicalRecords[1].RecordID,
-        PatientID: patients[3].PatientID,
-        DoctorID: doctors[3].DoctorID,
-        PrescriptionDate: yesterday.toISOString().split('T')[0],
-        ValidUntil: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        Status: 'Active',
-        Medications: [
-          {
-            name: 'Ibuprofen',
-            dosage: '400mg',
-            frequency: 'Twice daily',
-            duration: '7 days',
-            instructions: 'Take with food'
-          },
-          {
-            name: 'Muscle Relaxant',
-            dosage: '10mg',
-            frequency: 'Once at bedtime',
-            duration: '5 days',
-            instructions: 'May cause drowsiness'
-          }
-        ],
-        Instructions: 'Apply ice pack 3-4 times daily. Keep leg elevated. Start physiotherapy after 3 days.'
-      },
-      {
-        MedicalRecordID: medicalRecords[2].RecordID,
-        PatientID: patients[1].PatientID,
-        DoctorID: doctors[1].DoctorID,
-        PrescriptionDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        ValidUntil: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        Status: 'Active',
-        Medications: [
-          {
-            name: 'Hydrocortisone Cream',
-            dosage: '1%',
-            frequency: 'Apply twice daily',
-            duration: '14 days',
-            instructions: 'Apply thin layer on affected area'
-          },
-          {
-            name: 'Cetirizine',
-            dosage: '10mg',
-            frequency: 'Once daily at night',
-            duration: '7 days',
-            instructions: 'Take before bedtime'
-          }
-        ],
-        Instructions: 'Avoid contact with irritants. Use fragrance-free moisturizer. Do not scratch affected areas.'
-      }
-    ]);
-    console.log(`✅ Created ${prescriptions.length} prescriptions\n`);
-
-    // 10. Create Billing Records
-    console.log('💰 Creating billing records...');
-    const billings = await Billing.bulkCreate([
-      {
-        PatientID: patients[0].PatientID,
-        AppointmentID: appointments[3].AppointmentID,
-        BillingDate: lastWeek.toISOString().split('T')[0],
-        TotalAmount: 1200.00,
-        DiscountAmount: 120.00,
-        TaxAmount: 97.20,
-        NetAmount: 1177.20,
-        Status: 'Paid',
-        Items: [
-          { description: 'Consultation Fee', price: 600, quantity: 1 },
-          { description: 'Medical Tests', price: 400, quantity: 1 },
-          { description: 'Medicines', price: 200, quantity: 1 }
-        ]
-      },
-      {
-        PatientID: patients[3].PatientID,
-        AppointmentID: appointments[4].AppointmentID,
-        BillingDate: yesterday.toISOString().split('T')[0],
-        TotalAmount: 2500.00,
-        DiscountAmount: 0.00,
-        TaxAmount: 225.00,
-        NetAmount: 2725.00,
-        Status: 'Partial',
-        Items: [
-          { description: 'Consultation Fee', price: 900, quantity: 1 },
-          { description: 'X-Ray', price: 800, quantity: 1 },
-          { description: 'Physiotherapy Session', price: 600, quantity: 1 },
-          { description: 'Medicines', price: 200, quantity: 1 }
-        ]
-      },
-      {
-        PatientID: patients[1].PatientID,
-        BillingDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        TotalAmount: 950.00,
-        DiscountAmount: 50.00,
-        TaxAmount: 81.00,
-        NetAmount: 981.00,
-        Status: 'Paid',
-        Items: [
-          { description: 'Consultation Fee', price: 800, quantity: 1 },
-          { description: 'Medicines', price: 150, quantity: 1 }
-        ]
-      },
-      {
-        PatientID: patients[4].PatientID,
-        BillingDate: today.toISOString().split('T')[0],
-        TotalAmount: 1800.00,
-        DiscountAmount: 180.00,
-        TaxAmount: 145.80,
-        NetAmount: 1765.80,
-        Status: 'Pending',
-        Items: [
-          { description: 'Consultation Fee', price: 1200, quantity: 1 },
-          { description: 'MRI Scan', price: 600, quantity: 1 }
-        ]
-      }
-    ]);
-    console.log(`✅ Created ${billings.length} billing records\n`);
-
-    // 11. Create Payments
-    console.log('💳 Creating payment records...');
-    const payments = await Payment.bulkCreate([
-      {
-        BillingID: billings[0].BillingID,
-        Amount: 1177.20,
-        PaymentDate: lastWeek.toISOString().split('T')[0],
-        PaymentMethod: 'Card',
-        TransactionID: 'TXN' + Date.now() + '001',
-        Notes: 'Full payment via debit card'
-      },
-      {
-        BillingID: billings[1].BillingID,
-        Amount: 1500.00,
-        PaymentDate: yesterday.toISOString().split('T')[0],
-        PaymentMethod: 'UPI',
-        TransactionID: 'TXN' + Date.now() + '002',
-        Notes: 'Partial payment via UPI. Balance pending.'
-      },
-      {
-        BillingID: billings[2].BillingID,
-        Amount: 981.00,
-        PaymentDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        PaymentMethod: 'Cash',
-        TransactionID: null,
-        Notes: 'Full payment in cash'
-      }
-    ]);
-    console.log(`✅ Created ${payments.length} payment records\n`);
 
     // Print summary
     console.log('═══════════════════════════════════════════════════════');
@@ -632,34 +398,21 @@ async function seed() {
     console.log(`✅ ${staff.length} Staff Members`);
     console.log(`✅ ${patients.length} Patients`);
     console.log(`✅ ${appointments.length} Appointments`);
-    console.log(`✅ ${medicalRecords.length} Medical Records`);
-    console.log(`✅ ${prescriptions.length} Prescriptions`);
-    console.log(`✅ ${billings.length} Billing Records`);
-    console.log(`✅ ${payments.length} Payment Records`);
-    console.log(`✅ ${1 + doctors.length + staff.length + patients.length} User Accounts`);
     console.log('═══════════════════════════════════════════════════════\n');
 
-    console.log('🔑 Test Credentials:');
+    console.log('📝 System Access:');
     console.log('═══════════════════════════════════════════════════════');
-    console.log('👑 Admin:');
-    console.log('   Email: admin@hospital.com');
-    console.log('   Password: admin123\n');
-    
-    console.log('👨‍⚕️ Doctors:');
+    console.log('🔐 Admin Password: admin123');
+    console.log('');
+    console.log('👨‍⚕️ Doctors (Select by Name/ID):');
     doctors.forEach((doc, index) => {
-      console.log(`   Email: ${doc.Email} | Password: doctor123`);
+      console.log(`   ID: ${doc.DoctorID} | Dr. ${doc.FirstName} ${doc.LastName} (${specializations[index].SpecializationName})`);
     });
-    
-    console.log('\n👔 Staff:');
-    staff.forEach((s, index) => {
-      console.log(`   Email: ${s.Email} | Password: staff123`);
+    console.log('');
+    console.log('👥 Patients (Select by Name/ID):');
+    patients.forEach((pat) => {
+      console.log(`   ID: ${pat.PatientID} | ${pat.FirstName} ${pat.LastName} (${pat.PatientNumber})`);
     });
-    
-    console.log('\n👥 Patients:');
-    patients.forEach((pat, index) => {
-      console.log(`   Email: ${pat.Email} | Password: patient123`);
-    });
-    
     console.log('═══════════════════════════════════════════════════════\n');
 
   } catch (error) {

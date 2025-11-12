@@ -1,58 +1,19 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-
-exports.protect = async (req, res, next) => {
-  let token;
-
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    token = req.headers.authorization.split(' ')[1];
-  }
-
-  if (!token) {
-    return res.status(401).json({ 
+// Simple admin check middleware
+exports.checkAdmin = (req, res, next) => {
+  const password = req.headers['admin-password'] || req.body.adminPassword || req.query.adminPassword;
+  
+  if (password !== 'admin123') {
+    return res.status(403).json({
       success: false,
-      message: 'Not authorized to access this route' 
+      message: 'Invalid admin password'
     });
   }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findByPk(decoded.id, {
-      attributes: { exclude: ['Password'] }
-    });
-
-    if (!req.user) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'User not found' 
-      });
-    }
-
-    if (!req.user.IsActive) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'User account is inactive' 
-      });
-    }
-
-    next();
-  } catch (error) {
-    return res.status(401).json({ 
-      success: false,
-      message: 'Not authorized to access this route' 
-    });
-  }
+  
+  req.isAdmin = true;
+  next();
 };
 
-exports.authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.Role)) {
-      return res.status(403).json({
-        success: false,
-        message: `User role ${req.user.Role} is not authorized to access this route`
-      });
-    }
-    next();
-  };
+// No authentication needed - pass through
+exports.noAuth = (req, res, next) => {
+  next();
 };
-

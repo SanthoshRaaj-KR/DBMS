@@ -8,7 +8,6 @@ const morgan = require('morgan');
 const errorHandler = require('./src/middleware/errorHandler');
 
 // Import routes
-const authRoutes = require('./src/routes/auth');
 const patientRoutes = require('./src/routes/patients');
 const doctorRoutes = require('./src/routes/doctors');
 const staffRoutes = require('./src/routes/staff');
@@ -17,8 +16,7 @@ const medicalRecordRoutes = require('./src/routes/medicalRecords');
 const prescriptionRoutes = require('./src/routes/prescriptions');
 const billingRoutes = require('./src/routes/billing');
 const dashboardRoutes = require('./src/routes/dashboard');
-const specializationRoutes = require('./src/routes/specialization');
-const clinicRoutes = require('./src/routes/clinics');
+const specializationRoutes = require('./src/routes/Specialization');
 
 const app = express();
 
@@ -51,17 +49,15 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use('/src/api/auth', authRoutes);
-app.use('/src/api/patients', patientRoutes);
-app.use('/src/api/doctors', doctorRoutes);
-app.use('/src/api/staff', staffRoutes);
-app.use('/src/api/appointments', appointmentRoutes);
-app.use('/src/api/medical-records', medicalRecordRoutes);
-app.use('/src/api/prescriptions', prescriptionRoutes);
-app.use('/src/api/billing', billingRoutes);
-app.use('/src/api/dashboard', dashboardRoutes);
-app.use('/src/api/specialization', specializationRoutes);
-app.use('/src/api/clinics', clinicRoutes);
+app.use('/api/patients', patientRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/medical-records', medicalRecordRoutes);
+app.use('/api/prescriptions', prescriptionRoutes);
+app.use('/api/billing', billingRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/specializations', specializationRoutes);
 
 // 404 handler
 app.use((req, res) => {

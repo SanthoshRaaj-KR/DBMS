@@ -2,26 +2,24 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from './store/authStore';
-import Login from './pages/Login';
-import Register from './pages/Register';
+import Login from './pages/login';
 import Dashboard from './pages/dashboard';
-import Patients from './pages/Patients';
-import Doctors from './pages/Doctors';
-import Clinics from './pages/Clinics';
+import Patients from './pages/patients';
+import Doctors from './pages/doctors';
 import Appointments from './pages/appointments';
 import { LogOut } from 'lucide-react';
 
 function ProtectedRoute({ children }) {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  return isLoggedIn ? children : <Navigate to="/login" />;
 }
 
 function Layout({ children }) {
-  const { isAuthenticated, role, logout } = useAuthStore();
+  const { isLoggedIn, role, userName, logout } = useAuthStore();
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {isAuthenticated && (
+      {isLoggedIn && (
         <nav className="bg-white shadow">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex justify-between h-16">
@@ -40,14 +38,13 @@ function Layout({ children }) {
                     <Link to="/doctors" className="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-blue-600">
                       Doctors
                     </Link>
-                    <Link to="/clinics" className="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-blue-600">
-                      Clinics
-                    </Link>
                   </>
                 )}
               </div>
               <div className="flex items-center">
-                <span className="text-sm text-gray-600 mr-4 capitalize">{role}</span>
+                <span className="text-sm text-gray-600 mr-4">
+                  {userName} <span className="text-xs text-gray-500">({role})</span>
+                </span>
                 <button
                   onClick={() => {
                     logout();
@@ -75,12 +72,10 @@ export default function App() {
       <Layout>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/appointments" element={<ProtectedRoute><Appointments /></ProtectedRoute>} />
           <Route path="/patients" element={<ProtectedRoute><Patients /></ProtectedRoute>} />
           <Route path="/doctors" element={<ProtectedRoute><Doctors /></ProtectedRoute>} />
-          <Route path="/clinics" element={<ProtectedRoute><Clinics /></ProtectedRoute>} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>
       </Layout>

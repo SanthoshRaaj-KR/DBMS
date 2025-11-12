@@ -1,17 +1,15 @@
-
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate');
-const { protect, authorize } = require('../middleware/auth');
-const { asyncHandler, successResponse, errorResponse, calculateBilling } = require('../utils/helpers');
+const { asyncHandler, successResponse, errorResponse } = require('../utils/helpers');
 const { Billing, Payment, Patient, Appointment } = require('../models');
 const { Op } = require('sequelize');
 
 // @route   GET /api/billing
 // @desc    Get all bills
-// @access  Private (admin, staff)
-router.get('/', protect, authorize('admin', 'staff'), asyncHandler(async (req, res) => {
+// @access  Public
+router.get('/', asyncHandler(async (req, res) => {
   const { status, patientId } = req.query;
   let where = {};
   
@@ -30,7 +28,8 @@ router.get('/', protect, authorize('admin', 'staff'), asyncHandler(async (req, r
         attributes: ['AppointmentID', 'AppointmentDate']
       },
       {
-        model: Payment
+        model: Payment,
+        as: 'Payments'
       }
     ],
     order: [['BillingDate', 'DESC']]
@@ -41,13 +40,13 @@ router.get('/', protect, authorize('admin', 'staff'), asyncHandler(async (req, r
 
 // @route   GET /api/billing/:id
 // @desc    Get single bill
-// @access  Private
-router.get('/:id', protect, asyncHandler(async (req, res) => {
+// @access  Public
+router.get('/:id', asyncHandler(async (req, res) => {
   const bill = await Billing.findByPk(req.params.id, {
     include: [
       { model: Patient },
       { model: Appointment },
-      { model: Payment }
+      { model: Payment, as: 'Payments' }
     ]
   });
   
@@ -55,55 +54,35 @@ router.get('/:id', protect, asyncHandler(async (req, res) => {
     return errorResponse(res, 'Bill not found', 404);
   }
 
-  // Check authorization
-  if (req.user.Role === 'patient' && req.user.RefID !== bill.PatientID) {
-    return errorResponse(res, 'Not authorized', 403);
-  }
-
   successResponse(res, bill);
-}));
-
-// @route   GET /api/billing/patient/:patientId
-// @desc    Get patient's billing history
-// @access  Private
-router.get('/patient/:patientId', protect, asyncHandler(async (req, res) => {
-  // Check authorization
-  if (req.user.Role === 'patient' && req.user.RefID != req.params.patientId) {
-    return errorResponse(res, 'Not authorized', 403);
-  }
-
-  const bills = await Billing.findAll({
-    where: { PatientID: req.params.patientId },
-    include: [
-      { model: Appointment },
-      { model: Payment }
-    ],
-    order: [['BillingDate', 'DESC']]
-  });
-
-  successResponse(res, bills);
 }));
 
 // @route   POST /api/billing
 // @desc    Create new bill
-// @access  Private (admin, staff)
-router.post('/', protect, authorize('admin', 'staff'), [
+// @access  Public
+router.post('/', [
   body('patientId').notEmpty().withMessage('Patient ID is required'),
-  body('items').isArray({ min: 1 }).withMessage('At least one billing item is required'),
+  body('totalAmount').isNumeric().withMessage('Total amount must be a number'),
   validate
 ], asyncHandler(async (req, res) => {
-  const { patientId, appointmentId, items, discountPercent = 0, taxPercent = 0 } = req.body;
-  
-  // Calculate billing amounts
-  const amounts = calculateBilling(items, discountPercent, taxPercent);
+  const { 
+    patientId, 
+    appointmentId, 
+    totalAmount, 
+    discountAmount = 0, 
+    taxAmount = 0,
+    items = []
+  } = req.body;
+
+  const netAmount = totalAmount - discountAmount + taxAmount;
 
   const bill = await Billing.create({
     PatientID: patientId,
     AppointmentID: appointmentId,
-    TotalAmount: amounts.totalAmount,
-    DiscountAmount: amounts.discountAmount,
-    TaxAmount: amounts.taxAmount,
-    NetAmount: amounts.netAmount,
+    TotalAmount: totalAmount,
+    DiscountAmount: discountAmount,
+    TaxAmount: taxAmount,
+    NetAmount: netAmount,
     Items: items,
     Status: 'Pending'
   });
@@ -120,24 +99,21 @@ router.post('/', protect, authorize('admin', 'staff'), [
 
 // @route   PUT /api/billing/:id
 // @desc    Update bill
-// @access  Private (admin, staff)
-router.put('/:id', protect, authorize('admin', 'staff'), asyncHandler(async (req, res) => {
+// @access  Public
+router.put('/:id', asyncHandler(async (req, res) => {
   const bill = await Billing.findByPk(req.params.id);
   
   if (!bill) {
     return errorResponse(res, 'Bill not found', 404);
   }
 
-  // Recalculate if items changed
-  if (req.body.items) {
-    const discountPercent = req.body.discountPercent || (bill.DiscountAmount / bill.TotalAmount) * 100;
-    const taxPercent = req.body.taxPercent || (bill.TaxAmount / (bill.TotalAmount - bill.DiscountAmount)) * 100;
-    const amounts = calculateBilling(req.body.items, discountPercent, taxPercent);
+  // Recalculate net amount if amounts are being updated
+  if (req.body.totalAmount || req.body.discountAmount || req.body.taxAmount) {
+    const totalAmount = req.body.totalAmount || bill.TotalAmount;
+    const discountAmount = req.body.discountAmount !== undefined ? req.body.discountAmount : bill.DiscountAmount;
+    const taxAmount = req.body.taxAmount !== undefined ? req.body.taxAmount : bill.TaxAmount;
     
-    req.body.TotalAmount = amounts.totalAmount;
-    req.body.DiscountAmount = amounts.discountAmount;
-    req.body.TaxAmount = amounts.taxAmount;
-    req.body.NetAmount = amounts.netAmount;
+    req.body.NetAmount = totalAmount - discountAmount + taxAmount;
   }
 
   await bill.update(req.body);
@@ -146,65 +122,77 @@ router.put('/:id', protect, authorize('admin', 'staff'), asyncHandler(async (req
     include: [
       { model: Patient },
       { model: Appointment },
-      { model: Payment }
+      { model: Payment, as: 'Payments' }
     ]
   });
 
   successResponse(res, updatedBill, 'Bill updated successfully');
 }));
 
-// @route   POST /api/billing/:id/payment
-// @desc    Record payment for a bill
-// @access  Private (admin, staff)
-router.post('/:id/payment', protect, authorize('admin', 'staff'), [
-  body('amount').isFloat({ min: 0.01 }).withMessage('Valid amount is required'),
-  body('paymentMethod').isIn(['Cash', 'Card', 'UPI', 'Insurance']).withMessage('Invalid payment method'),
-  validate
-], asyncHandler(async (req, res) => {
+// @route   DELETE /api/billing/:id
+// @desc    Delete bill
+// @access  Public
+router.delete('/:id', asyncHandler(async (req, res) => {
   const bill = await Billing.findByPk(req.params.id);
   
   if (!bill) {
     return errorResponse(res, 'Bill not found', 404);
   }
 
-  const { amount, paymentMethod, transactionId, notes } = req.body;
+  await bill.destroy();
+  successResponse(res, null, 'Bill deleted successfully');
+}));
 
-  // Create payment record
+// @route   POST /api/billing/:id/payment
+// @desc    Add payment to bill
+// @access  Public
+router.post('/:id/payment', [
+  body('amount').isNumeric().withMessage('Amount must be a number'),
+  body('paymentMethod').notEmpty().withMessage('Payment method is required'),
+  validate
+], asyncHandler(async (req, res) => {
+  const bill = await Billing.findByPk(req.params.id, {
+    include: [{ model: Payment, as: 'Payments' }]
+  });
+  
+  if (!bill) {
+    return errorResponse(res, 'Bill not found', 404);
+  }
+
+  const { amount, paymentMethod, transactionID, notes } = req.body;
+
+  // Create payment
   const payment = await Payment.create({
     BillingID: bill.BillingID,
     Amount: amount,
     PaymentMethod: paymentMethod,
-    TransactionID: transactionId,
+    TransactionID: transactionID,
     Notes: notes
   });
 
-  // Calculate total payments
-  const totalPayments = await Payment.sum('Amount', {
-    where: { BillingID: bill.BillingID }
-  });
+  // Calculate total paid
+  const totalPaid = bill.Payments.reduce((sum, p) => sum + parseFloat(p.Amount), 0) + parseFloat(amount);
+  const netAmount = parseFloat(bill.NetAmount);
 
   // Update bill status
-  let status = 'Pending';
-  if (totalPayments >= parseFloat(bill.NetAmount)) {
-    status = 'Paid';
-  } else if (totalPayments > 0) {
-    status = 'Partial';
+  let newStatus = 'Pending';
+  if (totalPaid >= netAmount) {
+    newStatus = 'Paid';
+  } else if (totalPaid > 0) {
+    newStatus = 'Partial';
   }
 
-  await bill.update({ Status: status });
+  await bill.update({ Status: newStatus });
 
   const updatedBill = await Billing.findByPk(bill.BillingID, {
     include: [
       { model: Patient },
-      { model: Payment }
+      { model: Appointment },
+      { model: Payment, as: 'Payments' }
     ]
   });
 
-  successResponse(res, {
-    payment,
-    bill: updatedBill
-  }, 'Payment recorded successfully', 201);
+  successResponse(res, updatedBill, 'Payment added successfully', 201);
 }));
 
 module.exports = router;
-

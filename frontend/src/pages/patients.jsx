@@ -35,9 +35,11 @@ export default function Patients() {
 
   const loadPatients = async () => {
     try {
-      const { data } = await API.get('/patients');
-      setPatients(data);
-      setFilteredPatients(data);
+      const response = await API.get('/patients');
+      // Handle paginated response
+      const patientsList = response.patients || (Array.isArray(response) ? response : []);
+      setPatients(patientsList);
+      setFilteredPatients(patientsList);
     } catch (error) {
       toast.error('Failed to load patients');
     }

@@ -1,16 +1,14 @@
-
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate');
-const { protect, authorize } = require('../middleware/auth');
 const { asyncHandler, successResponse, errorResponse } = require('../utils/helpers');
 const { Staff, Department } = require('../models');
 
 // @route   GET /api/staff
 // @desc    Get all staff
-// @access  Private (admin, staff)
-router.get('/', protect, authorize('admin', 'staff'), asyncHandler(async (req, res) => {
+// @access  Public
+router.get('/', asyncHandler(async (req, res) => {
   const { departmentId, position } = req.query;
   let where = {};
   
@@ -28,8 +26,8 @@ router.get('/', protect, authorize('admin', 'staff'), asyncHandler(async (req, r
 
 // @route   GET /api/staff/:id
 // @desc    Get single staff member
-// @access  Private (admin, staff)
-router.get('/:id', protect, authorize('admin', 'staff'), asyncHandler(async (req, res) => {
+// @access  Public
+router.get('/:id', asyncHandler(async (req, res) => {
   const staff = await Staff.findByPk(req.params.id, {
     include: [{ model: Department }]
   });
@@ -38,18 +36,13 @@ router.get('/:id', protect, authorize('admin', 'staff'), asyncHandler(async (req
     return errorResponse(res, 'Staff member not found', 404);
   }
 
-  // Staff can only view their own profile unless admin
-  if (req.user.Role === 'staff' && req.user.RefID !== staff.StaffID) {
-    return errorResponse(res, 'Not authorized', 403);
-  }
-
   successResponse(res, staff);
 }));
 
 // @route   POST /api/staff
 // @desc    Create new staff member
-// @access  Private (admin only)
-router.post('/', protect, authorize('admin'), [
+// @access  Public
+router.post('/', [
   body('firstName').notEmpty().withMessage('First name is required'),
   body('position').notEmpty().withMessage('Position is required'),
   body('email').optional().isEmail().withMessage('Invalid email'),
@@ -61,17 +54,12 @@ router.post('/', protect, authorize('admin'), [
 
 // @route   PUT /api/staff/:id
 // @desc    Update staff member
-// @access  Private (admin, staff - own profile)
-router.put('/:id', protect, authorize('admin', 'staff'), asyncHandler(async (req, res) => {
+// @access  Public
+router.put('/:id', asyncHandler(async (req, res) => {
   const staff = await Staff.findByPk(req.params.id);
   
   if (!staff) {
     return errorResponse(res, 'Staff member not found', 404);
-  }
-
-  // Staff can only update their own profile
-  if (req.user.Role === 'staff' && req.user.RefID !== staff.StaffID) {
-    return errorResponse(res, 'Not authorized', 403);
   }
 
   await staff.update(req.body);
@@ -80,8 +68,8 @@ router.put('/:id', protect, authorize('admin', 'staff'), asyncHandler(async (req
 
 // @route   DELETE /api/staff/:id
 // @desc    Delete staff member
-// @access  Private (admin only)
-router.delete('/:id', protect, authorize('admin'), asyncHandler(async (req, res) => {
+// @access  Public
+router.delete('/:id', asyncHandler(async (req, res) => {
   const staff = await Staff.findByPk(req.params.id);
   
   if (!staff) {

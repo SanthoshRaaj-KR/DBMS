@@ -4,23 +4,28 @@ import { persist } from 'zustand/middleware';
 const useAuthStore = create(
   persist(
     (set) => ({
-      token: null,
-      role: null,
-      refID: null,
-      isAuthenticated: false,
+      role: null,              // 'doctor', 'patient', or 'admin'
+      userId: null,            // Doctor ID or Patient ID
+      userName: null,          // For display
+      adminPassword: null,     // Only for admin
+      isLoggedIn: false,
       
-      login: (token, role, refID) => set({ 
-        token, 
+      // Login function - no token needed
+      login: (role, userId, userName, adminPassword = null) => set({ 
         role, 
-        refID, 
-        isAuthenticated: true 
+        userId, 
+        userName,
+        adminPassword,
+        isLoggedIn: true 
       }),
       
+      // Logout function
       logout: () => set({ 
-        token: null, 
         role: null, 
-        refID: null, 
-        isAuthenticated: false 
+        userId: null, 
+        userName: null,
+        adminPassword: null,
+        isLoggedIn: false 
       }),
     }),
     { name: 'auth-storage' }

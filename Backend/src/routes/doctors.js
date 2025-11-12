@@ -1,39 +1,30 @@
-
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate');
-const { protect, authorize } = require('../middleware/auth');
-const { asyncHandler, successResponse, errorResponse, paginate, getPaginationMeta } = require('../utils/helpers');
+const { asyncHandler, successResponse, errorResponse } = require('../utils/helpers');
 const { Doctor, Specialization, Department, Appointment, Patient } = require('../models');
 
 // @route   GET /api/doctors
 // @desc    Get all doctors
 // @access  Public
 router.get('/', asyncHandler(async (req, res) => {
-  const { specializationId, departmentId, page = 1, limit = 10 } = req.query;
-  const { limit: queryLimit, offset } = paginate(page, limit);
-  
+  const { specializationId, departmentId } = req.query;
   let where = {};
   
   if (specializationId) where.SpecializationID = specializationId;
   if (departmentId) where.DepartmentID = departmentId;
 
-  const { count, rows } = await Doctor.findAndCountAll({
+  const doctors = await Doctor.findAll({
     where,
     include: [
-      { model: Specialization },
-      { model: Department }
+      { model: Specialization, attributes: ['SpecializationID', 'SpecializationName'] },
+      { model: Department, attributes: ['DepartmentID', 'DepartmentName'] }
     ],
-    limit: queryLimit,
-    offset,
     order: [['FirstName', 'ASC']]
   });
 
-  successResponse(res, {
-    doctors: rows,
-    pagination: getPaginationMeta(page, queryLimit, count)
-  });
+  successResponse(res, { doctors });
 }));
 
 // @route   GET /api/doctors/:id
@@ -56,40 +47,81 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
 // @route   POST /api/doctors
 // @desc    Create new doctor
-// @access  Private (admin only)
-router.post('/', protect, authorize('admin'), [
+// @access  Public
+router.post('/', [
   body('firstName').notEmpty().withMessage('First name is required'),
   body('specializationID').notEmpty().withMessage('Specialization is required'),
+  body('contactNumber').optional().matches(/^[6-9]\d{9}$/).withMessage('Invalid phone number'),
   body('email').optional().isEmail().withMessage('Invalid email'),
   validate
 ], asyncHandler(async (req, res) => {
-  const doctor = await Doctor.create(req.body);
+  const doctorData = {
+    FirstName: req.body.firstName || req.body.FirstName,
+    LastName: req.body.lastName || req.body.LastName,
+    ContactNumber: req.body.contactNumber || req.body.ContactNumber,
+    Email: req.body.email || req.body.Email,
+    SpecializationID: req.body.specializationID || req.body.SpecializationID,
+    DepartmentID: req.body.departmentID || req.body.DepartmentID,
+    LicenseNumber: req.body.licenseNumber || req.body.LicenseNumber,
+    Qualification: req.body.qualification || req.body.Qualification,
+    ExperienceYears: req.body.experienceYears || req.body.ExperienceYears,
+    ConsultationFee: req.body.consultationFee || req.body.ConsultationFee
+  };
+
+  const doctor = await Doctor.create(doctorData);
   successResponse(res, doctor, 'Doctor created successfully', 201);
 }));
 
 // @route   PUT /api/doctors/:id
 // @desc    Update doctor
-// @access  Private (admin, doctor - own profile)
-router.put('/:id', protect, authorize('admin', 'doctor'), asyncHandler(async (req, res) => {
+// @access  Public
+router.put('/:id', asyncHandler(async (req, res) => {
   const doctor = await Doctor.findByPk(req.params.id);
   
   if (!doctor) {
     return errorResponse(res, 'Doctor not found', 404);
   }
 
-  // Doctors can only update their own profile
-  if (req.user.Role === 'doctor' && req.user.RefID !== doctor.DoctorID) {
-    return errorResponse(res, 'Not authorized', 403);
+  const updateData = {};
+  if (req.body.firstName !== undefined || req.body.FirstName !== undefined) {
+    updateData.FirstName = req.body.firstName || req.body.FirstName;
+  }
+  if (req.body.lastName !== undefined || req.body.LastName !== undefined) {
+    updateData.LastName = req.body.lastName || req.body.LastName;
+  }
+  if (req.body.contactNumber !== undefined || req.body.ContactNumber !== undefined) {
+    updateData.ContactNumber = req.body.contactNumber || req.body.ContactNumber;
+  }
+  if (req.body.email !== undefined || req.body.Email !== undefined) {
+    updateData.Email = req.body.email || req.body.Email;
+  }
+  if (req.body.specializationID !== undefined || req.body.SpecializationID !== undefined) {
+    updateData.SpecializationID = req.body.specializationID || req.body.SpecializationID;
+  }
+  if (req.body.departmentID !== undefined || req.body.DepartmentID !== undefined) {
+    updateData.DepartmentID = req.body.departmentID || req.body.DepartmentID;
+  }
+  if (req.body.licenseNumber !== undefined || req.body.LicenseNumber !== undefined) {
+    updateData.LicenseNumber = req.body.licenseNumber || req.body.LicenseNumber;
+  }
+  if (req.body.qualification !== undefined || req.body.Qualification !== undefined) {
+    updateData.Qualification = req.body.qualification || req.body.Qualification;
+  }
+  if (req.body.experienceYears !== undefined || req.body.ExperienceYears !== undefined) {
+    updateData.ExperienceYears = req.body.experienceYears || req.body.ExperienceYears;
+  }
+  if (req.body.consultationFee !== undefined || req.body.ConsultationFee !== undefined) {
+    updateData.ConsultationFee = req.body.consultationFee || req.body.ConsultationFee;
   }
 
-  await doctor.update(req.body);
+  await doctor.update(updateData);
   successResponse(res, doctor, 'Doctor updated successfully');
 }));
 
 // @route   DELETE /api/doctors/:id
 // @desc    Delete doctor
-// @access  Private (admin only)
-router.delete('/:id', protect, authorize('admin'), asyncHandler(async (req, res) => {
+// @access  Public
+router.delete('/:id', asyncHandler(async (req, res) => {
   const doctor = await Doctor.findByPk(req.params.id);
   
   if (!doctor) {
@@ -102,27 +134,16 @@ router.delete('/:id', protect, authorize('admin'), asyncHandler(async (req, res)
 
 // @route   GET /api/doctors/:id/appointments
 // @desc    Get doctor's appointments
-// @access  Private
-router.get('/:id/appointments', protect, asyncHandler(async (req, res) => {
+// @access  Public
+router.get('/:id/appointments', asyncHandler(async (req, res) => {
   const doctor = await Doctor.findByPk(req.params.id);
   
   if (!doctor) {
     return errorResponse(res, 'Doctor not found', 404);
   }
 
-  // Doctors can only view their own appointments
-  if (req.user.Role === 'doctor' && req.user.RefID !== doctor.DoctorID) {
-    return errorResponse(res, 'Not authorized', 403);
-  }
-
-  const { date, status } = req.query;
-  let where = { DoctorID: req.params.id };
-  
-  if (date) where.AppointmentDate = date;
-  if (status) where.Status = status;
-
   const appointments = await Appointment.findAll({
-    where,
+    where: { DoctorID: req.params.id },
     include: [{ model: Patient }],
     order: [['AppointmentDate', 'DESC'], ['AppointmentTime', 'DESC']]
   });

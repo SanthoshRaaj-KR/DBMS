@@ -29,8 +29,10 @@ export default function Doctors() {
   const loadDoctors = async () => {
     try {
       const params = filterSpec ? { specializationId: filterSpec } : {};
-      const { data } = await API.get('/doctors', { params });
-      setDoctors(data);
+      const response = await API.get('/doctors', { params });
+      // Handle paginated response
+      const doctorsList = response.doctors || (Array.isArray(response) ? response : []);
+      setDoctors(doctorsList);
     } catch (error) {
       toast.error('Failed to load doctors');
     }
@@ -38,8 +40,8 @@ export default function Doctors() {
 
   const loadSpecializations = async () => {
     try {
-      const { data } = await API.get('/specializations');
-      setSpecializations(data);
+      const response = await API.get('/specializations');
+      setSpecializations(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Failed to load specializations');
     }
@@ -47,8 +49,8 @@ export default function Doctors() {
 
   const loadClinics = async () => {
     try {
-      const { data } = await API.get('/clinics');
-      setClinics(data);
+      const response = await API.get('/clinics');
+      setClinics(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Failed to load clinics');
     }
