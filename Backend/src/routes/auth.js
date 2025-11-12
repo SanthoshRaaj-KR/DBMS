@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
@@ -74,12 +73,8 @@ router.post('/register', [
 
   successResponse(res, {
     token,
-    user: {
-      id: user.UserID,
-      email: user.Email,
-      role: user.Role,
-      refId: user.RefID
-    }
+    role: user.Role,
+    refID: user.RefID
   }, 'Registration successful', 201);
 }));
 
@@ -117,12 +112,8 @@ router.post('/login', [
 
   successResponse(res, {
     token,
-    user: {
-      id: user.UserID,
-      email: user.Email,
-      role: user.Role,
-      refId: user.RefID
-    }
+    role: user.Role,
+    refID: user.RefID
   }, 'Login successful');
 }));
 

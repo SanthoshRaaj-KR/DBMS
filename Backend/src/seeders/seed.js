@@ -54,6 +54,29 @@ async function seed() {
     ]);
     console.log(`✅ Created ${departments.length} departments\n`);
 
+    console.log('🏥 Creating clinics...');
+    const clinics = await Clinic.bulkCreate([
+      {
+        ClinicName: 'Main Hospital Clinic',
+        Address: '123 Hospital Road, Bangalore, Karnataka',
+        ContactNumber: '9876543200',
+        Email: 'main@hospital.com'
+      },
+      {
+        ClinicName: 'Cardiology Wing',
+        Address: '123 Hospital Road, Building A, Bangalore, Karnataka',
+        ContactNumber: '9876543201',
+        Email: 'cardio@hospital.com'
+      },
+      {
+        ClinicName: 'Pediatrics Center',
+        Address: "456 Children's Lane, Bangalore, Karnataka",
+        ContactNumber: '9876543202',
+        Email: 'pediatrics@hospital.com'
+      }
+    ]);
+    console.log(`✅ Created ${clinics.length} clinics\n`);
+
     // 3. Create Doctors
     console.log('👨‍⚕️ Creating doctors...');
     const doctors = await Doctor.bulkCreate([

@@ -1,11 +1,10 @@
-
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate');
 const { protect, authorize } = require('../middleware/auth');
 const { asyncHandler, successResponse, errorResponse } = require('../utils/helpers');
-const { Appointment, Patient, Doctor, Specialization } = require('../models');
+const { Appointment, Patient, Doctor, Specialization, Clinic } = require('../models');
 const { Op } = require('sequelize');
 
 // @route   GET /api/appointments
@@ -42,6 +41,10 @@ router.get('/', protect, asyncHandler(async (req, res) => {
           model: Specialization,
           attributes: ['SpecializationID', 'SpecializationName']
         }]
+      },
+      {
+        model: Clinic,
+        attributes: ['ClinicID', 'ClinicName', 'Address']
       }
     ],
     order: [['AppointmentDate', 'DESC'], ['AppointmentTime', 'DESC']]
@@ -60,7 +63,8 @@ router.get('/:id', protect, asyncHandler(async (req, res) => {
       { 
         model: Doctor,
         include: [{ model: Specialization }]
-      }
+      },
+      { model: Clinic }
     ]
   });
   
@@ -83,15 +87,15 @@ router.get('/:id', protect, asyncHandler(async (req, res) => {
 // @desc    Create new appointment
 // @access  Private
 router.post('/', protect, [
-  body('doctorId').notEmpty().withMessage('Doctor is required'),
-  body('appointmentDate').notEmpty().isDate().withMessage('Valid date is required'),
-  body('appointmentTime').notEmpty().withMessage('Time is required'),
+  body('DoctorID').notEmpty().withMessage('Doctor is required'),
+  body('AppointmentDate').notEmpty().isDate().withMessage('Valid date is required'),
+  body('AppointmentTime').notEmpty().withMessage('Time is required'),
   validate
 ], asyncHandler(async (req, res) => {
-  const { patientId, doctorId, appointmentDate, appointmentTime, reason, notes } = req.body;
+  const { PatientID, DoctorID, ClinicID, AppointmentDate, AppointmentTime, Reason, Notes } = req.body;
   
   // Determine patient ID based on role
-  let finalPatientId = patientId;
+  let finalPatientId = PatientID;
   if (req.user.Role === 'patient') {
     finalPatientId = req.user.RefID;
   }
@@ -103,9 +107,9 @@ router.post('/', protect, [
   // Check for conflicting appointments
   const existingAppointment = await Appointment.findOne({
     where: {
-      DoctorID: doctorId,
-      AppointmentDate: appointmentDate,
-      AppointmentTime: appointmentTime,
+      DoctorID: DoctorID,
+      AppointmentDate: AppointmentDate,
+      AppointmentTime: AppointmentTime,
       Status: { [Op.notIn]: ['Cancelled', 'No Show'] }
     }
   });
@@ -117,18 +121,20 @@ router.post('/', protect, [
   // Create appointment
   const appointment = await Appointment.create({
     PatientID: finalPatientId,
-    DoctorID: doctorId,
-    AppointmentDate: appointmentDate,
-    AppointmentTime: appointmentTime,
+    DoctorID: DoctorID,
+    ClinicID: ClinicID,
+    AppointmentDate: AppointmentDate,
+    AppointmentTime: AppointmentTime,
     Status: 'Scheduled',
-    Reason: reason,
-    Notes: notes
+    Reason: Reason,
+    Notes: Notes
   });
 
   const appointmentWithDetails = await Appointment.findByPk(appointment.AppointmentID, {
     include: [
       { model: Patient },
-      { model: Doctor, include: [{ model: Specialization }] }
+      { model: Doctor, include: [{ model: Specialization }] },
+      { model: Clinic }
     ]
   });
 
@@ -151,9 +157,9 @@ router.put('/:id', protect, asyncHandler(async (req, res) => {
   }
 
   // Check for time conflicts if time is being changed
-  if (req.body.appointmentDate || req.body.appointmentTime) {
-    const newDate = req.body.appointmentDate || appointment.AppointmentDate;
-    const newTime = req.body.appointmentTime || appointment.AppointmentTime;
+  if (req.body.AppointmentDate || req.body.AppointmentTime) {
+    const newDate = req.body.AppointmentDate || appointment.AppointmentDate;
+    const newTime = req.body.AppointmentTime || appointment.AppointmentTime;
     
     const conflict = await Appointment.findOne({
       where: {
@@ -175,35 +181,12 @@ router.put('/:id', protect, asyncHandler(async (req, res) => {
   const updatedAppointment = await Appointment.findByPk(appointment.AppointmentID, {
     include: [
       { model: Patient },
-      { model: Doctor, include: [{ model: Specialization }] }
+      { model: Doctor, include: [{ model: Specialization }] },
+      { model: Clinic }
     ]
   });
 
   successResponse(res, updatedAppointment, 'Appointment updated successfully');
-}));
-
-// @route   PUT /api/appointments/:id/status
-// @desc    Update appointment status
-// @access  Private (doctor, staff, admin)
-router.put('/:id/status', protect, authorize('doctor', 'staff', 'admin'), [
-  body('status').isIn(['Scheduled', 'Confirmed', 'Completed', 'Cancelled', 'No Show'])
-    .withMessage('Invalid status'),
-  validate
-], asyncHandler(async (req, res) => {
-  const appointment = await Appointment.findByPk(req.params.id);
-  
-  if (!appointment) {
-    return errorResponse(res, 'Appointment not found', 404);
-  }
-
-  // Doctors can only update their own appointments
-  if (req.user.Role === 'doctor' && req.user.RefID !== appointment.DoctorID) {
-    return errorResponse(res, 'Not authorized', 403);
-  }
-
-  await appointment.update({ Status: req.body.status });
-  
-  successResponse(res, appointment, 'Appointment status updated successfully');
 }));
 
 // @route   DELETE /api/appointments/:id
@@ -231,4 +214,3 @@ router.delete('/:id', protect, asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
-

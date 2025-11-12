@@ -1,25 +1,33 @@
 import axios from 'axios';
 import useAuthStore from './store/authStore';
-import toast from 'react-hot-toast';
 
-const API = axios.create({ 
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api' 
+const API = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-API.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Request interceptor to add token
+API.interceptors.request.use(
+  (config) => {
+    const token = useAuthStore.getState().token;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
+// Response interceptor to handle errors
 API.interceptors.response.use(
-  (response) => response,
+  (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
       useAuthStore.getState().logout();
-      toast.error('Session expired. Please login again.');
       window.location.href = '/login';
     }
     return Promise.reject(error);

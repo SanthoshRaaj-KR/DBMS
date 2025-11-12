@@ -1,16 +1,15 @@
-
 const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const { asyncHandler, successResponse } = require('../utils/helpers');
-const { Patient, Doctor, Appointment, Billing, Payment, MedicalRecord } = require('../models');
+const { Patient, Doctor, Appointment, Billing, Payment, MedicalRecord, Clinic } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 
 // @route   GET /api/dashboard/stats
 // @desc    Get dashboard statistics
-// @access  Private (admin, staff, doctor)
-router.get('/stats', protect, authorize('admin', 'staff', 'doctor'), asyncHandler(async (req, res) => {
+// @access  Private
+router.get('/stats', protect, asyncHandler(async (req, res) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -20,63 +19,69 @@ router.get('/stats', protect, authorize('admin', 'staff', 'doctor'), asyncHandle
   // Total counts
   const totalPatients = await Patient.count();
   const totalDoctors = await Doctor.count();
+  const totalClinics = await Clinic.count();
   const totalAppointments = await Appointment.count();
 
-  // Today's appointments
-  const todayAppointments = await Appointment.count({
+  // Upcoming appointments (today and future)
+  const upcomingAppointments = await Appointment.count({
     where: {
-      AppointmentDate: today.toISOString().split('T')[0],
+      AppointmentDate: { [Op.gte]: today.toISOString().split('T')[0] },
       Status: { [Op.notIn]: ['Cancelled', 'No Show'] }
     }
   });
 
-  // Appointments by status
-  const appointmentsByStatus = await Appointment.findAll({
-    attributes: [
-      'Status',
-      [sequelize.fn('COUNT', sequelize.col('AppointmentID')), 'count']
+  // Recent appointments for table
+  let whereClause = {
+    AppointmentDate: { [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
+  };
+
+  // Filter by role
+  if (req.user.Role === 'patient') {
+    whereClause.PatientID = req.user.RefID;
+  } else if (req.user.Role === 'doctor') {
+    whereClause.DoctorID = req.user.RefID;
+  }
+
+  const recentAppointments = await Appointment.findAll({
+    where: whereClause,
+    include: [
+      { 
+        model: Patient,
+        attributes: ['PatientID', 'FirstName', 'LastName']
+      },
+      { 
+        model: Doctor,
+        attributes: ['DoctorID', 'FirstName', 'LastName']
+      },
+      {
+        model: Clinic,
+        attributes: ['ClinicID', 'ClinicName']
+      }
     ],
-    group: ['Status']
+    order: [['AppointmentDate', 'DESC'], ['AppointmentTime', 'DESC']],
+    limit: 10
   });
 
-  // Revenue statistics (last 30 days)
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const revenueStats = await Billing.findAll({
-    attributes: [
-      [sequelize.fn('SUM', sequelize.col('NetAmount')), 'totalRevenue'],
-      [sequelize.fn('COUNT', sequelize.col('BillingID')), 'totalBills']
-    ],
-    where: {
-      BillingDate: { [Op.gte]: thirtyDaysAgo }
-    }
-  });
-
-  // Pending payments
-  const pendingPayments = await Billing.sum('NetAmount', {
-    where: { Status: { [Op.in]: ['Pending', 'Partial'] } }
-  });
-
-  // Recent patients (last 7 days)
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  const recentPatients = await Patient.count({
-    where: {
-      createdAt: { [Op.gte]: sevenDaysAgo }
-    }
-  });
+  // Appointments by status (for admin and doctors)
+  let appointmentsByStatus = [];
+  if (req.user.Role !== 'patient') {
+    appointmentsByStatus = await Appointment.findAll({
+      attributes: [
+        'Status',
+        [sequelize.fn('COUNT', sequelize.col('AppointmentID')), 'count']
+      ],
+      group: ['Status']
+    });
+  }
 
   successResponse(res, {
     totalPatients,
     totalDoctors,
+    totalClinics,
     totalAppointments,
-    todayAppointments,
+    upcomingAppointments,
     appointmentsByStatus,
-    revenueStats: revenueStats[0] || { totalRevenue: 0, totalBills: 0 },
-    pendingPayments: pendingPayments || 0,
-    recentPatients
+    recentAppointments
   });
 }));
 
@@ -108,6 +113,10 @@ router.get('/appointments/today', protect, asyncHandler(async (req, res) => {
       { 
         model: Doctor,
         attributes: ['DoctorID', 'FirstName', 'LastName']
+      },
+      {
+        model: Clinic,
+        attributes: ['ClinicID', 'ClinicName']
       }
     ],
     order: [['AppointmentTime', 'ASC']]

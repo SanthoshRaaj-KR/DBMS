@@ -1,4 +1,3 @@
-
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -15,6 +14,10 @@ const Appointment = sequelize.define('Appointment', {
   DoctorID: {
     type: DataTypes.INTEGER,
     allowNull: false
+  },
+  ClinicID: {
+    type: DataTypes.INTEGER,
+    allowNull: true
   },
   AppointmentDate: {
     type: DataTypes.DATEONLY,
