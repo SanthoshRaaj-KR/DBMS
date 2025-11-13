@@ -1,131 +1,178 @@
 import React, { useEffect, useState } from 'react';
 import API from '../api';
 import useAuthStore from '../store/authStore';
-import { Calendar, Users, FileText, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Users, FileText, Clock, CheckCircle, Award, Briefcase, Phone, Mail } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
+import StatCard from '../components/StatCard';
+import Card from '../components/Card';
 
 export default function DoctorDashboard() {
-  const [appointments, setAppointments] = useState([]);
-  const [stats, setStats] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const { userId } = useAuthStore();
 
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, [userId]);
 
   const loadDashboardData = async () => {
     try {
-      // Get doctor's appointments
-      const appts = await API.get('/appointments');
-      setAppointments(Array.isArray(appts) ? appts : []);
-
-      // Today's appointments
-      const today = new Date().toISOString().split('T')[0];
-      const todayAppts = appts.filter(a => a.AppointmentDate === today);
-
-      // Calculate stats
-      const scheduled = appts.filter(a => a.Status === 'Scheduled' || a.Status === 'Confirmed').length;
-      const completed = appts.filter(a => a.Status === 'Completed').length;
-      const cancelled = appts.filter(a => a.Status === 'Cancelled').length;
-
-      setStats({
-        totalAppointments: appts.length,
-        todayAppointments: todayAppts.length,
-        scheduledAppointments: scheduled,
-        completedAppointments: completed,
-        cancelledAppointments: cancelled
-      });
+      const data = await API.get(`/dashboard/doctor/${userId}`);
+      setDashboardData(data);
+      setLoading(false);
     } catch (error) {
       console.error('Failed to load dashboard data', error);
-      setStats({ 
-        totalAppointments: 0, 
-        todayAppointments: 0, 
-        scheduledAppointments: 0,
-        completedAppointments: 0,
-        cancelledAppointments: 0
-      });
+      setLoading(false);
     }
   };
 
-  if (!stats) return <div className="p-6">Loading...</div>;
+  if (loading) return <LoadingSpinner fullScreen />;
+  if (!dashboardData) return <div className="p-6">Failed to load dashboard</div>;
 
-  const todayAppointments = appointments.filter(a => 
-    a.AppointmentDate === new Date().toISOString().split('T')[0]
-  );
+  const { doctorInfo, statistics, todaySchedule, recentAppointments } = dashboardData;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Doctor Dashboard</h1>
-      
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div className="p-6 bg-gradient-to-br from-blue-50 via-white to-indigo-50 min-h-screen">
+      {/* Doctor Profile Header */}
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border-l-4 border-blue-500">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-500 p-4 rounded-full text-white">
+              <Briefcase className="w-8 h-8" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800">
+                Dr. {doctorInfo.FirstName} {doctorInfo.LastName}
+              </h1>
+              <p className="text-blue-600 font-medium text-lg">
+                {doctorInfo.Specialization?.SpecializationName}
+              </p>
+              <p className="text-gray-600">{doctorInfo.Qualification} • {doctorInfo.ExperienceYears} years experience</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="bg-blue-50 px-4 py-2 rounded-lg mb-2">
+              <p className="text-sm text-gray-600">License Number</p>
+              <p className="text-lg font-bold text-blue-700">{doctorInfo.LicenseNumber}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+            <Mail className="w-5 h-5 text-gray-600" />
+            <div>
+              <p className="text-xs text-gray-500">Email</p>
+              <p className="font-medium text-gray-800">{doctorInfo.Email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+            <Phone className="w-5 h-5 text-gray-600" />
+            <div>
+              <p className="text-xs text-gray-500">Contact</p>
+              <p className="font-medium text-gray-800">{doctorInfo.ContactNumber}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+            <Award className="w-5 h-5 text-gray-600" />
+            <div>
+              <p className="text-xs text-gray-500">Department</p>
+              <p className="font-medium text-gray-800">{doctorInfo.Department?.DepartmentName}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <StatCard 
-          icon={<Calendar className="w-8 h-8" />}
+          icon={Calendar}
           title="Total Appointments"
-          value={stats.totalAppointments}
+          value={statistics.totalAppointments}
           color="bg-blue-500"
+          subtitle="All time"
         />
         <StatCard 
-          icon={<Clock className="w-8 h-8" />}
+          icon={Clock}
           title="Today's Appointments"
-          value={stats.todayAppointments}
+          value={statistics.todayAppointments}
           color="bg-orange-500"
+          subtitle={`${todaySchedule.length} scheduled`}
         />
         <StatCard 
-          icon={<CheckCircle className="w-8 h-8" />}
+          icon={CheckCircle}
           title="Completed"
-          value={stats.completedAppointments}
+          value={statistics.completedAppointments}
           color="bg-green-500"
+          subtitle="Successfully treated"
         />
         <StatCard 
-          icon={<Users className="w-8 h-8" />}
-          title="Scheduled"
-          value={stats.scheduledAppointments}
+          icon={Calendar}
+          title="Upcoming"
+          value={statistics.upcomingAppointments}
           color="bg-purple-500"
+          subtitle="Scheduled visits"
+        />
+        <StatCard 
+          icon={Users}
+          title="Total Patients"
+          value={statistics.uniquePatients}
+          color="bg-indigo-500"
+          subtitle="Unique patients"
+        />
+        <StatCard 
+          icon={FileText}
+          title="Medical Records"
+          value={statistics.totalMedicalRecords}
+          color="bg-teal-500"
+          subtitle="Records created"
         />
       </div>
 
-      {/* Today's Appointments */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Clock className="w-5 h-5" />
-          Today's Schedule
-        </h2>
-        
-        {todayAppointments.length > 0 ? (
+      {/* Today's Schedule */}
+      <Card 
+        title="Today's Schedule"
+        subtitle={`${todaySchedule.length} appointments scheduled for today`}
+        noPadding
+        icon={Clock}
+      >
+        {todaySchedule.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Time</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Patient</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Patient ID</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Contact</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Reason</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {todayAppointments.map(appt => (
-                  <tr key={appt.AppointmentID} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">
+              <tbody className="bg-white divide-y divide-gray-100">
+                {todaySchedule.map(appt => (
+                  <tr key={appt.AppointmentID} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap font-bold text-blue-600">
                       {appt.AppointmentTime}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {appt.Patient?.FirstName} {appt.Patient?.LastName}
+                      <p className="font-medium text-gray-900">
+                        {appt.Patient?.FirstName} {appt.Patient?.LastName}
+                      </p>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-600 font-mono">
+                        {appt.Patient?.PatientNumber}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {appt.Patient?.ContactNumber || 'N/A'}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-sm text-gray-700">
                       {appt.Reason || 'General Consultation'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        appt.Status === 'Scheduled' || appt.Status === 'Confirmed' ? 'bg-green-100 text-green-800' :
-                        appt.Status === 'Completed' ? 'bg-blue-100 text-blue-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {appt.Status}
-                      </span>
+                      <StatusBadge status={appt.Status} />
                     </td>
                   </tr>
                 ))}
@@ -133,52 +180,58 @@ export default function DoctorDashboard() {
             </table>
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-8">No appointments scheduled for today</p>
+          <div className="p-12 text-center">
+            <Clock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg">No appointments scheduled for today</p>
+            <p className="text-gray-400 text-sm mt-2">Enjoy your free day!</p>
+          </div>
         )}
-      </div>
+      </Card>
 
-      {/* Upcoming Appointments */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Calendar className="w-5 h-5" />
-          Upcoming Appointments
-        </h2>
-        
-        {appointments.length > 0 ? (
+      {/* Recent Appointments History */}
+      <Card 
+        title="Recent Appointments History"
+        subtitle="Your appointment history"
+        noPadding
+        icon={Calendar}
+        className="mt-6"
+      >
+        {recentAppointments.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date & Time</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Date & Time</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Patient</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Patient ID</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Contact</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Reason</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {appointments.slice(0, 10).map(appt => (
-                  <tr key={appt.AppointmentID} className="hover:bg-gray-50">
+              <tbody className="bg-white divide-y divide-gray-100">
+                {recentAppointments.map(appt => (
+                  <tr key={appt.AppointmentID} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {appt.AppointmentDate} {appt.AppointmentTime}
+                      <p className="text-sm font-medium text-gray-900">{appt.AppointmentDate}</p>
+                      <p className="text-xs text-gray-500">{appt.AppointmentTime}</p>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
                       {appt.Patient?.FirstName} {appt.Patient?.LastName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-600 font-mono">
+                        {appt.Patient?.PatientNumber}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {appt.Patient?.ContactNumber || 'N/A'}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-sm text-gray-700">
                       {appt.Reason || 'General Consultation'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        appt.Status === 'Scheduled' || appt.Status === 'Confirmed' ? 'bg-green-100 text-green-800' :
-                        appt.Status === 'Completed' ? 'bg-blue-100 text-blue-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {appt.Status}
-                      </span>
+                      <StatusBadge status={appt.Status} />
                     </td>
                   </tr>
                 ))}
@@ -186,24 +239,28 @@ export default function DoctorDashboard() {
             </table>
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-8">No appointments found</p>
+          <div className="p-12 text-center">
+            <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No appointment history found</p>
+          </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
 
-function StatCard({ icon, title, value, color }) {
+function StatusBadge({ status }) {
+  const styles = {
+    'Scheduled': 'bg-blue-100 text-blue-700',
+    'Confirmed': 'bg-green-100 text-green-700',
+    'Completed': 'bg-gray-100 text-gray-700',
+    'Cancelled': 'bg-red-100 text-red-700',
+    'No Show': 'bg-orange-100 text-orange-700'
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-4">
-      <div className={`${color} p-3 rounded-full text-white`}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-gray-500 text-sm">{title}</p>
-        <p className="text-2xl font-bold text-gray-800">{value}</p>
-      </div>
-    </div>
+    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${styles[status] || 'bg-gray-100 text-gray-700'}`}>
+      {status}
+    </span>
   );
 }
-

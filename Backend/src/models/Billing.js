@@ -55,8 +55,10 @@ const Billing = sequelize.define('Billing', {
     beforeCreate: (bill) => {
       if (!bill.InvoiceNumber) {
         const timestamp = Date.now();
-        const random = Math.floor(Math.random() * 1000);
-        bill.InvoiceNumber = `INV${timestamp}${random}`;
+        const random = Math.floor(Math.random() * 10000);
+        // Add more entropy with microseconds from performance API if available
+        const extraRandom = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+        bill.InvoiceNumber = `INV${timestamp}${random}${extraRandom}`;
       }
     }
   }

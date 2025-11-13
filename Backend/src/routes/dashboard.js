@@ -289,4 +289,245 @@ router.get('/admin/overview', checkAdmin, asyncHandler(async (req, res) => {
   });
 }));
 
+// @route   GET /api/dashboard/doctor/:doctorId
+// @desc    Get doctor's personal dashboard
+// @access  Public
+router.get('/doctor/:doctorId', asyncHandler(async (req, res) => {
+  const { doctorId } = req.params;
+  const { Specialization, Department } = require('../models');
+
+  // Get doctor details
+  const doctor = await Doctor.findByPk(doctorId, {
+    include: [
+      { model: Specialization, attributes: ['SpecializationID', 'SpecializationName'] },
+      { model: Department, attributes: ['DepartmentID', 'DepartmentName'] }
+    ]
+  });
+
+  if (!doctor) {
+    return res.status(404).json({ message: 'Doctor not found' });
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Get doctor's statistics
+  const totalAppointments = await Appointment.count({
+    where: { DoctorID: doctorId }
+  });
+
+  const completedAppointments = await Appointment.count({
+    where: { DoctorID: doctorId, Status: 'Completed' }
+  });
+
+  const todayAppointments = await Appointment.count({
+    where: {
+      DoctorID: doctorId,
+      AppointmentDate: today.toISOString().split('T')[0],
+      Status: { [Op.notIn]: ['Cancelled', 'No Show'] }
+    }
+  });
+
+  const upcomingAppointments = await Appointment.count({
+    where: {
+      DoctorID: doctorId,
+      AppointmentDate: { [Op.gte]: today.toISOString().split('T')[0] },
+      Status: { [Op.in]: ['Scheduled', 'Confirmed'] }
+    }
+  });
+
+  // Get unique patients count
+  const uniquePatients = await Appointment.count({
+    where: { DoctorID: doctorId },
+    distinct: true,
+    col: 'PatientID'
+  });
+
+  // Get total medical records created
+  const totalMedicalRecords = await MedicalRecord.count({
+    where: { DoctorID: doctorId }
+  });
+
+  // Recent appointments with patient details
+  const recentAppointments = await Appointment.findAll({
+    where: { DoctorID: doctorId },
+    include: [
+      { 
+        model: Patient,
+        attributes: ['PatientID', 'PatientNumber', 'FirstName', 'LastName', 'ContactNumber']
+      }
+    ],
+    order: [['AppointmentDate', 'DESC'], ['AppointmentTime', 'DESC']],
+    limit: 10
+  });
+
+  // Today's schedule
+  const todaySchedule = await Appointment.findAll({
+    where: {
+      DoctorID: doctorId,
+      AppointmentDate: today.toISOString().split('T')[0]
+    },
+    include: [
+      { 
+        model: Patient,
+        attributes: ['PatientID', 'PatientNumber', 'FirstName', 'LastName', 'ContactNumber']
+      }
+    ],
+    order: [['AppointmentTime', 'ASC']]
+  });
+
+  successResponse(res, {
+    doctorInfo: {
+      DoctorID: doctor.DoctorID,
+      FirstName: doctor.FirstName,
+      LastName: doctor.LastName,
+      Email: doctor.Email,
+      ContactNumber: doctor.ContactNumber,
+      LicenseNumber: doctor.LicenseNumber,
+      Qualification: doctor.Qualification,
+      ExperienceYears: doctor.ExperienceYears,
+      ConsultationFee: doctor.ConsultationFee,
+      Specialization: doctor.Specialization,
+      Department: doctor.Department
+    },
+    statistics: {
+      totalAppointments,
+      completedAppointments,
+      todayAppointments,
+      upcomingAppointments,
+      uniquePatients,
+      totalMedicalRecords
+    },
+    recentAppointments,
+    todaySchedule
+  });
+}));
+
+// @route   GET /api/dashboard/patient/:patientId
+// @desc    Get patient's personal dashboard
+// @access  Public
+router.get('/patient/:patientId', asyncHandler(async (req, res) => {
+  const { patientId } = req.params;
+  const { Prescription } = require('../models');
+
+  // Get patient details
+  const patient = await Patient.findByPk(patientId);
+
+  if (!patient) {
+    return res.status(404).json({ message: 'Patient not found' });
+  }
+
+  // Get billing summary
+  const totalBilled = await Billing.sum('NetAmount', {
+    where: { PatientID: patientId }
+  }) || 0;
+
+  const totalPaid = await Billing.sum('NetAmount', {
+    where: { 
+      PatientID: patientId,
+      Status: 'Paid'
+    }
+  }) || 0;
+
+  const pendingAmount = await Billing.sum('NetAmount', {
+    where: { 
+      PatientID: patientId,
+      Status: { [Op.in]: ['Pending', 'Partial'] }
+    }
+  }) || 0;
+
+  // Get billing records
+  const billingRecords = await Billing.findAll({
+    where: { PatientID: patientId },
+    include: [
+      {
+        model: Appointment,
+        include: [
+          {
+            model: Doctor,
+            attributes: ['FirstName', 'LastName']
+          }
+        ]
+      }
+    ],
+    order: [['BillingDate', 'DESC']]
+  });
+
+  // Get medical records
+  const medicalRecords = await MedicalRecord.findAll({
+    where: { PatientID: patientId },
+    include: [
+      {
+        model: Doctor,
+        attributes: ['FirstName', 'LastName']
+      },
+      {
+        model: Appointment,
+        attributes: ['AppointmentDate', 'AppointmentTime']
+      }
+    ],
+    order: [['VisitDate', 'DESC']]
+  });
+
+  // Get prescriptions
+  const prescriptions = await Prescription.findAll({
+    where: { PatientID: patientId },
+    include: [
+      {
+        model: Doctor,
+        attributes: ['FirstName', 'LastName']
+      }
+    ],
+    order: [['PrescriptionDate', 'DESC']]
+  });
+
+  // Get appointments
+  const appointments = await Appointment.findAll({
+    where: { PatientID: patientId },
+    include: [
+      {
+        model: Doctor,
+        attributes: ['FirstName', 'LastName'],
+        include: [{ model: require('../models').Specialization }]
+      }
+    ],
+    order: [['AppointmentDate', 'DESC'], ['AppointmentTime', 'DESC']]
+  });
+
+  const today = new Date().toISOString().split('T')[0];
+  const upcomingAppointments = appointments.filter(a => 
+    a.AppointmentDate >= today && 
+    (a.Status === 'Scheduled' || a.Status === 'Confirmed')
+  );
+
+  successResponse(res, {
+    patientInfo: {
+      PatientID: patient.PatientID,
+      PatientNumber: patient.PatientNumber,
+      FirstName: patient.FirstName,
+      LastName: patient.LastName,
+      DateOfBirth: patient.DateOfBirth,
+      Gender: patient.Gender,
+      BloodGroup: patient.BloodGroup,
+      ContactNumber: patient.ContactNumber,
+      Email: patient.Email,
+      Address: patient.Address
+    },
+    billingSummary: {
+      totalBilled,
+      totalPaid,
+      pendingAmount,
+      billingRecords
+    },
+    medicalRecords,
+    prescriptions,
+    appointments: {
+      all: appointments,
+      upcoming: upcomingAppointments,
+      total: appointments.length,
+      upcomingCount: upcomingAppointments.length
+    }
+  });
+}));
+
 module.exports = router;
